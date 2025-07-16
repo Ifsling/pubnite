@@ -1,10 +1,17 @@
 import Phaser from "phaser"
+import BagUI from "../components/BagUi"
+import GunUI from "../components/GunUi"
+import HealthUI from "../components/HealthUi"
 import Player from "../components/Player"
 import { AddPhysicsItem } from "../HelperFunctions"
 import { PreloadAssets } from "../PreloadAssets"
 
 export default class GameScene extends Phaser.Scene {
   player!: Player
+  bagUI!: BagUI
+  healthUI!: HealthUI
+  gunUI!: GunUI
+  testDamageKey!: Phaser.Input.Keyboard.Key
 
   constructor() {
     super("MyScene")
@@ -16,30 +23,36 @@ export default class GameScene extends Phaser.Scene {
 
   create() {
     this.add.image(0, 0, "background").setOrigin(0, 0)
-
-    // Replace sprite with full Player class
     this.player = new Player(this, 800, 600)
-
-    AddPhysicsItem(this, "house", 300, 300)
-    AddPhysicsItem(this, "stone", 1520, 780)
+    this.bagUI = new BagUI(this, this.player)
+    this.healthUI = new HealthUI(this, this.player)
+    this.gunUI = new GunUI(this, this.player)
 
     this.player.addItemToBag("painkiller")
+    this.player.addItemToBag("painkiller")
+    this.player.addItemToBag("painkiller")
+    this.player.addItemToBag("painkiller")
+    this.player.addItemToBag("painkiller")
 
-    // Ground item pickup example
-    AddPhysicsItem(this, "pistol", 900, 300, true, true, true, "gun")
-    AddPhysicsItem(this, "ak47", 1100, 300, true, true, true, "gun")
-    AddPhysicsItem(this, "sniper", 1300, 300, true, true, true, "gun")
-    AddPhysicsItem(this, "shotgun", 1500, 300, true, true, true, "gun")
+    AddPhysicsItem(this, "vest", 1300, 300, true, false, true, "vest")
+    AddPhysicsItem(this, "helmet", 500, 300, true, false, true, "helmet")
+
+    AddPhysicsItem(this, "pistol", 1000, 500, true, false, true, "gun")
+    AddPhysicsItem(this, "ak47", 1300, 500, true, false, true, "gun")
+    AddPhysicsItem(this, "shotgun", 1600, 500, true, false, true, "gun")
+    AddPhysicsItem(this, "sniper", 1900, 500, true, false, true, "gun")
   }
 
   update() {
     this.player.update()
+    this.bagUI.update()
+    this.healthUI.update()
+    this.gunUI.update()
 
-    // Toggle bag with B key
     if (
-      this.input!.keyboard!.checkDown(this.input!.keyboard!.addKey("B"), 250)
+      this!.input!.keyboard!.checkDown(this!.input!.keyboard!.addKey("G"), 250)
     ) {
-      this.player.toggleBag()
+      this.player.tryPickup()
     }
   }
 }

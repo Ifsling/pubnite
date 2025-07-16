@@ -25,9 +25,16 @@ export function AddPhysicsItem(
     body.setImmovable(isImmovable)
   } else {
     body.setImmovable(true)
-    scene.physics.add.overlap(scene.player, item, () => {
-      scene.player.tryPickup(item)
-    })
+
+    if (pickupType === "gun") {
+      scene.physics.add.overlap(scene.player, item, () => {
+        scene.player.setOverlappingGun(item) // custom method
+      })
+    } else {
+      scene.physics.add.overlap(scene.player, item, () => {
+        scene.player.tryPickup(item)
+      })
+    }
   }
 
   return item

@@ -11,4 +11,5 @@ export function PreloadAssets(scene: GameScene) {
   scene.load.image("ak47", "/images/guns/ak47.png")
   scene.load.image("sniper", "/images/guns/sniper.png")
   scene.load.image("shotgun", "/images/guns/shotgun.png")
+  scene.load.image("painkiller", "/images/painkiller.png")
 }
