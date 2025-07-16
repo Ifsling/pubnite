@@ -3,7 +3,8 @@ import { showTopLeftOverlayText } from "../HelperFunctions"
 
 export default class Player extends Phaser.GameObjects.Container {
   private playerSprite: Phaser.GameObjects.Sprite
-  private guns: Phaser.GameObjects.Container
+  private gunSlots: (Phaser.GameObjects.Sprite | null)[]
+  private gunsContainer: Phaser.GameObjects.Container
   private helmet: Phaser.GameObjects.Container
   private vest: Phaser.GameObjects.Container
   private bag: Phaser.GameObjects.Container
@@ -20,7 +21,6 @@ export default class Player extends Phaser.GameObjects.Container {
 
   private speed: number = 200
 
-  // Health-related
   private maxHealth: number = 100
   private currentHealth: number = 100
   private hasHelmet: boolean = false
@@ -36,24 +36,21 @@ export default class Player extends Phaser.GameObjects.Container {
     this.add(this.playerSprite)
 
     // Guns
-    this.guns = scene.add.container(0, 0)
-    this.guns.name = "guns"
+    this.gunsContainer = scene.add.container(0, 0)
+    this.add(this.gunsContainer)
+    this.gunSlots = [null, null, null]
     this.activeGunIndex = -1
-    this.add(this.guns)
 
     // Helmet
     this.helmet = scene.add.container(0, -30)
-    this.helmet.name = "helmet"
     this.add(this.helmet)
 
     // Vest
     this.vest = scene.add.container(0, 20)
-    this.vest.name = "vest"
     this.add(this.vest)
 
     // Bag
     this.bag = scene.add.container(0, 50)
-    this.bag.name = "bag"
     this.bag.visible = false
     this.add(this.bag)
 
@@ -67,19 +64,33 @@ export default class Player extends Phaser.GameObjects.Container {
     this.setInteractive()
     scene.add.existing(this)
 
-    // Movement keys
+    // Controls
     this.cursors = scene!.input!.keyboard!.createCursorKeys()
     this.wasdKeys = scene!.input!.keyboard!.addKeys({
       W: Phaser.Input.Keyboard.KeyCodes.W,
       A: Phaser.Input.Keyboard.KeyCodes.A,
       S: Phaser.Input.Keyboard.KeyCodes.S,
       D: Phaser.Input.Keyboard.KeyCodes.D,
-    }) as {
-      W: Phaser.Input.Keyboard.Key
-      A: Phaser.Input.Keyboard.Key
-      S: Phaser.Input.Keyboard.Key
-      D: Phaser.Input.Keyboard.Key
-    }
+    }) as any
+
+    // Gun switching with keys 1-3
+    scene!.input!.keyboard!.on("keydown", (event: KeyboardEvent) => {
+      switch (event.key) {
+        case "1":
+          this.setActiveGun(0)
+          break
+        case "2":
+          this.setActiveGun(1)
+          break
+        case "3":
+          this.setActiveGun(2)
+          break
+        case "g":
+        case "G":
+          this.tryPickup()
+          break
+      }
+    })
   }
 
   public update(): void {
@@ -102,37 +113,93 @@ export default class Player extends Phaser.GameObjects.Container {
   }
 
   public addGun(gunSpriteKey: string): void {
-    const gun = this.scene.add.sprite(0, 0, gunSpriteKey)
-    gun.setOrigin(0.5, 0.5)
-    gun.setPosition(120, 130)
-    gun.visible = false
-    this.guns.add(gun)
+    const emptyIndex = this.gunSlots.findIndex((slot) => slot === null)
+    if (emptyIndex === -1) {
+      showTopLeftOverlayText(
+        this.scene,
+        "You can only carry 3 guns at a time.",
+        20,
+        70,
+        3000
+      )
+      return
+    }
 
-    if (this.guns.length === 1) {
-      this.setActiveGun(0)
+    const gun = this.scene.add.sprite(120, 130, gunSpriteKey)
+    gun.setOrigin(0.5, 0.5)
+    gun.visible = false
+    this.gunsContainer.add(gun)
+    this.gunSlots[emptyIndex] = gun
+
+    if (this.activeGunIndex === -1) {
+      this.setActiveGun(emptyIndex)
     }
   }
 
   public setActiveGun(index: number): void {
-    this.guns.getAll().forEach((gun, i) => {
-      if (gun instanceof Phaser.GameObjects.Sprite) {
-        gun.visible = i === index
-      }
+    const gun = this.gunSlots[index]
+    if (!gun) return
+
+    this.gunSlots.forEach((g, i) => {
+      if (g) g.visible = i === index
     })
+
     this.activeGunIndex = index
   }
 
   public getActiveGun(): Phaser.GameObjects.Sprite | null {
-    const gun = this.guns.getAt(this.activeGunIndex)
-    return gun instanceof Phaser.GameObjects.Sprite ? gun : null
+    return this.gunSlots[this.activeGunIndex]
+  }
+
+  public getAllGunKeys(): (string | null)[] {
+    return this.gunSlots.map((gun) => (gun ? gun.texture.key : null))
+  }
+
+  public removeGunAtIndex(index: number): void {
+    const gun = this.gunSlots[index]
+    if (gun) {
+      gun.destroy()
+      this.gunSlots[index] = null
+      if (this.activeGunIndex === index) {
+        this.activeGunIndex = -1
+      }
+    }
+  }
+
+  public setOverlappingGun(item: Phaser.GameObjects.Sprite) {
+    this.overlappingGun = item
+  }
+
+  public tryPickup(item?: Phaser.GameObjects.Sprite & { pickupType?: string }) {
+    if (!item && this.overlappingGun) {
+      item = this.overlappingGun
+    }
+    if (!item) return
+
+    switch (item.pickupType) {
+      case "gun":
+        this.addGun(item.texture.key)
+        break
+      case "helmet":
+        this.equipHelmet(item.texture.key)
+        break
+      case "vest":
+        this.equipVest(item.texture.key)
+        break
+      case "bagItem":
+        this.addItemToBag(item.texture.key)
+        break
+    }
+
+    item.destroy()
+    if (item === this.overlappingGun) this.overlappingGun = null
   }
 
   public equipHelmet(helmetSpriteKey: string): void {
     this.helmet.removeAll(true)
     const helmet = this.scene.add
-      .sprite(0, 0, helmetSpriteKey)
+      .sprite(-10, -100, helmetSpriteKey)
       .setOrigin(0.5)
-      .setPosition(-10, -100)
     this.helmet.add(helmet)
 
     this.hasHelmet = true
@@ -142,19 +209,12 @@ export default class Player extends Phaser.GameObjects.Container {
 
   public equipVest(vestSpriteKey: string): void {
     this.vest.removeAll(true)
-    const vest = this.scene.add
-      .sprite(0, 0, vestSpriteKey)
-      .setOrigin(0.5)
-      .setPosition(2, 78)
+    const vest = this.scene.add.sprite(2, 78, vestSpriteKey).setOrigin(0.5)
     this.vest.add(vest)
 
     this.hasVest = true
     this.vestHealth = 60
     this.recalculateMaxHealth()
-  }
-
-  public getHealth(): number {
-    return this.currentHealth
   }
 
   private recalculateMaxHealth(): void {
@@ -163,60 +223,12 @@ export default class Player extends Phaser.GameObjects.Container {
     if (this.hasHelmet) this.maxHealth += 50
     if (this.hasVest) this.maxHealth += 60
 
-    // If gear was added (not removed), boost current health too
     if (this.maxHealth > oldMax) {
       this.currentHealth += this.maxHealth - oldMax
-      if (this.currentHealth > this.maxHealth) {
-        this.currentHealth = this.maxHealth
-      }
-    }
-
-    // Clamp health to new max if gear was removed
-    if (this.currentHealth > this.maxHealth) {
-      this.currentHealth = this.maxHealth
-    }
-  }
-
-  public takeDamage(amount: number): void {
-    if (this.hasHelmet && this.hasVest) {
-      if (this.helmetHealth >= this.vestHealth) {
-        this.helmetHealth -= amount
-      } else {
-        this.vestHealth -= amount
-      }
-      this.currentHealth -= amount
-
-      if (this.currentHealth <= 150) {
-        if (this.helmetHealth < this.vestHealth && this.hasHelmet) {
-          this.removeHelmet()
-        } else if (this.hasVest) {
-          this.removeVest()
-        }
-      }
-
-      if (this.currentHealth <= 100) {
-        this.removeHelmet()
-        this.removeVest()
-      }
-    } else if (this.hasVest) {
-      this.vestHealth -= amount
-      this.currentHealth -= amount
-      if (this.vestHealth <= 0 || this.currentHealth <= 100) {
-        this.removeVest()
-      }
-    } else if (this.hasHelmet) {
-      this.helmetHealth -= amount
-      this.currentHealth -= amount
-      if (this.helmetHealth <= 0 || this.currentHealth <= 100) {
-        this.removeHelmet()
-      }
+      this.currentHealth = Math.min(this.currentHealth, this.maxHealth)
     } else {
-      this.currentHealth -= amount
+      this.currentHealth = Math.min(this.currentHealth, this.maxHealth)
     }
-
-    if (this.currentHealth < 0) this.currentHealth = 0
-
-    this.recalculateMaxHealth()
   }
 
   private removeHelmet(): void {
@@ -233,15 +245,22 @@ export default class Player extends Phaser.GameObjects.Container {
     this.recalculateMaxHealth()
   }
 
+  public getHealth(): number {
+    return this.currentHealth
+  }
+
+  public takeDamage(amount: number): void {
+    this.currentHealth -= amount
+    if (this.currentHealth < 0) this.currentHealth = 0
+    this.recalculateMaxHealth()
+  }
+
   public addItemToBag(itemSpriteKey: string): void {
-    console.log(itemSpriteKey)
     const item = this.scene.add.sprite(0, 0, itemSpriteKey)
     this.bag.add(item)
-    console.log(this.bag.getAll())
   }
 
   public getBagItems(): string[] {
-    console.log(this.bag)
     return this.bag
       .getAll()
       .map((i) => (i as Phaser.GameObjects.Sprite).texture.key)
@@ -251,70 +270,10 @@ export default class Player extends Phaser.GameObjects.Container {
     const item = this.bag
       .getAll()
       .find((i) => (i as Phaser.GameObjects.Sprite).texture.key === key)
-    if (item) {
-      item.destroy()
-    }
+    if (item) item.destroy()
   }
 
   public toggleBag(): void {
     this.bag.visible = !this.bag.visible
-  }
-
-  public getAllGunKeys(): (string | null)[] {
-    const guns = this.guns.getAll() as Phaser.GameObjects.Sprite[]
-    const keys: (string | null)[] = [null, null, null]
-
-    guns.forEach((gun, index) => {
-      keys[index] = gun.texture.key
-    })
-
-    return keys
-  }
-
-  public removeGunAtIndex(index: number): void {
-    const gun = this.guns.getAt(index)
-    if (gun) {
-      gun.destroy()
-      if (this.activeGunIndex === index) this.activeGunIndex = -1
-    }
-  }
-
-  public setOverlappingGun(item: Phaser.GameObjects.Sprite) {
-    this.overlappingGun = item
-  }
-
-  public tryPickup(item?: Phaser.GameObjects.Sprite & { pickupType?: string }) {
-    if (!item && this.overlappingGun) {
-      item = this.overlappingGun
-    }
-    if (!item) return
-
-    switch (item.pickupType) {
-      case "gun":
-        if (this.guns.getAll().length >= 3) {
-          showTopLeftOverlayText(
-            this.scene,
-            "You can only carry 3 guns at a time.",
-            20,
-            70,
-            5000
-          )
-          return
-        }
-        this.addGun(item.texture.key)
-        break
-      case "helmet":
-        this.equipHelmet(item.texture.key)
-        break
-      case "vest":
-        this.equipVest(item.texture.key)
-        break
-      case "bagItem":
-        this.addItemToBag(item.texture.key)
-        break
-    }
-
-    item.destroy()
-    if (item === this.overlappingGun) this.overlappingGun = null
   }
 }
