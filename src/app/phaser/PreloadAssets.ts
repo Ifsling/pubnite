@@ -12,4 +12,13 @@ export function PreloadAssets(scene: GameScene) {
   scene.load.image("sniper", "/images/guns/sniper.png")
   scene.load.image("shotgun", "/images/guns/shotgun.png")
   scene.load.image("painkiller", "/images/painkiller.png")
+  scene.load.image("pistol_ammo", "/images/guns/pistol-ammo-ground.png")
+  scene.load.image("ak47_ammo", "/images/guns/ak47-ammo-ground.png")
+  scene.load.image("shotgun_ammo", "/images/guns/shotgun-ammo-ground.png")
+  scene.load.image("sniper_ammo", "/images/guns/sniper-ammo-ground.png")
+  scene.load.image("pistol-bullet", "/images/guns/pistol-bullet.png")
+  scene.load.image("ak47-bullet", "/images/guns/ak47-bullet.png")
+  scene.load.image("sniper-bullet", "/images/guns/sniper-bullet.png")
+  scene.load.image("shotgun-bullet", "/images/guns/shotgun-bullet.png")
+  scene.load.image("villian", "/images/villian.png")
 }

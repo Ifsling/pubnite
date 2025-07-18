@@ -2,9 +2,9 @@
 import Gun, { BulletType } from "./Gun"
 
 const AK47_BULLET: BulletType = {
-  sprite: "bullet",
+  sprite: "pistol-bullet",
   damage: 30,
-  speed: 600
+  speed: 600,
 }
 
 export default class Ak47 extends Gun {
@@ -24,7 +24,7 @@ export default class Ak47 extends Gun {
 
   public tryShoot(pointer: Phaser.Input.Pointer): boolean {
     if (!this.firing || !this.canShoot()) return false
-    
+
     this.lastShot = this.scene.time.now
     this.ammo--
     this.createBullet(this.rotation)

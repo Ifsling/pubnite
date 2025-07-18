@@ -34,10 +34,10 @@ export default class Player extends Phaser.GameObjects.Container {
 
   // Ammo storage
   private ammoStorage: { [key: string]: number } = {
-    pistol: 45,
-    ak47: 120,
-    shotgun: 30,
-    sniper: 20,
+    pistol: 0,
+    ak47: 0,
+    shotgun: 0,
+    sniper: 0,
   }
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
@@ -143,6 +143,8 @@ export default class Player extends Phaser.GameObjects.Container {
   private reloadActiveGun(): void {
     const activeGun = this.getActiveGun()
     if (!activeGun) return
+
+    console.log(this.ammoStorage)
 
     const availableAmmo = this.ammoStorage[activeGun.gunType]
     if (availableAmmo <= 0) {
