@@ -45,11 +45,15 @@ export default abstract class Gun extends Phaser.GameObjects.Sprite {
   }
 
   protected createBullet(angle: number): Phaser.Physics.Arcade.Sprite {
+    // Get gun's global position (world coords) instead of local (container) coords
+    const worldPos = this.getWorldTransformMatrix().transformPoint(0, 0)
+
     const bullet = this.scene.physics.add.sprite(
-      this.x,
-      this.y,
+      worldPos.x,
+      worldPos.y,
       this.bulletType.sprite
     )
+
     bullet.setRotation(angle)
     if (this.bulletType.scale) {
       bullet.setScale(this.bulletType.scale)

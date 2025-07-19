@@ -24,7 +24,7 @@ export default function PhaserGame() {
         default: "arcade",
         arcade: {
           gravity: { x: 0, y: 0 },
-          debug: true,
+          debug: false,
         },
       },
       dom: {
