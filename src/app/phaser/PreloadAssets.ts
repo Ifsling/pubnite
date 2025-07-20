@@ -2,6 +2,7 @@ import GameScene from "./scenes/GameScene"
 
 export function PreloadAssets(scene: GameScene) {
   scene.load.image("background", "/images/temp/bg.png")
+  scene.load.image("background2", "/images/temp/bg3.jpg")
   scene.load.image("house", "/images/temp/house.png")
   scene.load.image("stone", "/images/temp/stone.png")
   scene.load.image("player", "/images/player.png")

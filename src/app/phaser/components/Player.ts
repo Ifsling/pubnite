@@ -1,4 +1,5 @@
 import Phaser from "phaser"
+import { ammoAmounts } from "../Constants"
 import { showTopLeftOverlayText } from "../HelperFunctions"
 import Ak47 from "./guns/Ak47"
 import Gun from "./guns/Gun"
@@ -143,8 +144,6 @@ export default class Player extends Phaser.GameObjects.Container {
   private reloadActiveGun(): void {
     const activeGun = this.getActiveGun()
     if (!activeGun) return
-
-    console.log(this.ammoStorage)
 
     const availableAmmo = this.ammoStorage[activeGun.gunType]
     if (availableAmmo <= 0) {
@@ -327,12 +326,6 @@ export default class Player extends Phaser.GameObjects.Container {
   }
 
   private getAmmoAmount(gunType: string): number {
-    const ammoAmounts: { [key: string]: number } = {
-      pistol: 15,
-      ak47: 30,
-      shotgun: 10,
-      sniper: 5,
-    }
     return ammoAmounts[gunType] || 0
   }
 

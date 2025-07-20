@@ -1,4 +1,3 @@
-// src/components/guns/Ak47.ts
 import Gun, { BulletType } from "./Gun"
 
 const AK47_BULLET: BulletType = {

@@ -3,7 +3,7 @@ import Gun, { BulletType } from "./Gun"
 const SHOTGUN_BULLET: BulletType = {
   sprite: "shotgun-bullet",
   damage: 20,
-  speed: 700
+  speed: 700,
 }
 
 const SPREAD = 0.2
@@ -14,11 +14,11 @@ export default class Shotgun extends Gun {
   }
 
   public tryShoot(pointer: Phaser.Input.Pointer): boolean {
-    if (!this.canShoot() || this.ammo < 3) return false
-    
+    if (!this.canShoot()) return false
+
     this.lastShot = this.scene.time.now
-    this.ammo -= 3
-    
+    this.ammo -= 1
+
     // Fire 3 bullets with spread
     for (const offset of [-SPREAD, 0, SPREAD]) {
       this.createBullet(this.rotation + offset)

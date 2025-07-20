@@ -26,6 +26,7 @@ export default class BagUI {
     const bg = this.scene.add
       .rectangle(0, 0, 400, this.scene.scale.height, 0x222222, 0.95)
       .setOrigin(0, 0)
+      .setScrollFactor(0)
 
     const title = this.scene.add.text(10, 10, "Bag Items", {
       fontSize: "20px",
@@ -41,6 +42,7 @@ export default class BagUI {
       .setOrigin(1, 0)
       .setInteractive()
       .on("pointerdown", () => this.toggle())
+      .setScrollFactor(0)
 
     this.container.add([bg, title, close])
   }
@@ -93,6 +95,7 @@ export default class BagUI {
         })
         .setOrigin(1, 0) // anchor to top-right
         .setInteractive()
+        .setScrollFactor(0)
         .on("pointerdown", () => {
           this.player.removeItemFromBag(key)
           this.populateItems()
@@ -107,6 +110,7 @@ export default class BagUI {
         })
         .setOrigin(1, 0) // anchor to top-right
         .setInteractive()
+        .setScrollFactor(0)
         .on("pointerdown", () => {
           console.log("Used", key)
         })
