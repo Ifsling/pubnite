@@ -36,6 +36,7 @@ export default class GunUI {
         .setOrigin(0.5)
         .setInteractive({ cursor: "pointer" })
         .setVisible(false)
+        .setScrollFactor(0)
 
       // Correctly typed arrow function
       closeBtn.on(
