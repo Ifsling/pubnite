@@ -1,3 +1,4 @@
+import { getOneSpawnLocationWithinMap } from "@/app/utils"
 import Phaser from "phaser"
 import BagUI from "../components/BagUi"
 import BulletCountUI from "../components/BulletCountUi"
@@ -5,10 +6,13 @@ import Enemy from "../components/Enemy"
 import GunUI from "../components/GunUi"
 import HealthUI from "../components/HealthUi"
 import Player from "../components/Player"
-import { AddPhysicsItem } from "../HelperFunctions"
+import { MAP_SCALE_FACTOR } from "../Constants"
+import { AddPhysicsItem, handleCollisions } from "../HelperFunctions"
+import { createMap, spawnableLocations } from "../map/Map"
 import { PreloadAssets } from "../PreloadAssets"
 
 export default class GameScene extends Phaser.Scene {
+  map!: Phaser.Tilemaps.Tilemap
   player!: Player
   bagUI!: BagUI
   healthUI!: HealthUI
@@ -26,12 +30,46 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
-    this.add.image(0, 0, "background2").setOrigin(0, 0)
-    this.player = new Player(this, 800, 600)
+    const {
+      map,
+      tileset,
+      backgroundLayer,
+      trees,
+      water,
+      houses,
+      road,
+      bridge,
+      bush,
+      stones,
+    } = createMap(this)
+    this.map = map
+
+    const location = getOneSpawnLocationWithinMap()
+    console.log(location)
+    const locations = spawnableLocations()
+
+    this.player = new Player(this, 450, 450)
     this.bagUI = new BagUI(this, this.player)
     this.healthUI = new HealthUI(this, this.player)
     this.gunUI = new GunUI(this, this.player)
     this.bulletCountUI = new BulletCountUI(this)
+
+    handleCollisions(this, {
+      houses,
+      water,
+      trees,
+      bush,
+      stones,
+    })
+
+    const TILE_SIZE = 300 * MAP_SCALE_FACTOR
+    const graphics = this.add.graphics()
+
+    graphics.fillStyle(0xff0000, 0.5) // Red, opacity
+
+    locations.forEach(({ x, y }) => {
+      graphics.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+    })
 
     // Add some initial items to bag
     this.player.addItemToBag("painkiller")
@@ -43,22 +81,58 @@ export default class GameScene extends Phaser.Scene {
     AddPhysicsItem(this, "helmet", 500, 300, true, false, true, "helmet")
 
     // Add guns on ground
-    AddPhysicsItem(this, "pistol", 1000, 500, true, false, true, "gun")
-    AddPhysicsItem(this, "ak47", 1300, 500, true, false, true, "gun")
-    AddPhysicsItem(this, "shotgun", 1600, 500, true, false, true, "gun")
-    AddPhysicsItem(this, "sniper", 1900, 500, true, false, true, "gun")
+    AddPhysicsItem(this, "pistol", 1000, 500 + 500, true, false, true, "gun")
+    AddPhysicsItem(this, "ak47", 1300, 500 + 500, true, false, true, "gun")
+    AddPhysicsItem(this, "shotgun", 1600, 500 + 500, true, false, true, "gun")
+    AddPhysicsItem(this, "sniper", 1900, 500 + 500, true, false, true, "gun")
 
     // Add ammo pickups
-    AddPhysicsItem(this, "pistol_ammo", 1000, 400, true, false, true, "ammo")
-    AddPhysicsItem(this, "ak47_ammo", 1300, 400, true, false, true, "ammo")
-    AddPhysicsItem(this, "shotgun_ammo", 1600, 400, true, false, true, "ammo")
-    AddPhysicsItem(this, "sniper_ammo", 1900, 400, true, false, true, "ammo")
+    AddPhysicsItem(
+      this,
+      "pistol_ammo",
+      1000,
+      400 + 500,
+      true,
+      false,
+      true,
+      "ammo"
+    )
+    AddPhysicsItem(
+      this,
+      "ak47_ammo",
+      1300,
+      400 + 500,
+      true,
+      false,
+      true,
+      "ammo"
+    )
+    AddPhysicsItem(
+      this,
+      "shotgun_ammo",
+      1600,
+      400 + 500,
+      true,
+      false,
+      true,
+      "ammo"
+    )
+    AddPhysicsItem(
+      this,
+      "sniper_ammo",
+      1900,
+      400 + 500,
+      true,
+      false,
+      true,
+      "ammo"
+    )
 
-    // this.enemies = [
-    //   new Enemy(this, 1000, 800, this.player),
-    //   new Enemy(this, 1400, 900, this.player),
-    //   new Enemy(this, 1600, 1000, this.player),
-    // ]
+    this.enemies = [
+      new Enemy(this, 1000, 800, this.player),
+      new Enemy(this, 1400, 900, this.player),
+      new Enemy(this, 1600, 1000, this.player),
+    ]
 
     // this.enemies.forEach((enemy) => this.add.existing(enemy))
 
@@ -79,8 +153,8 @@ export default class GameScene extends Phaser.Scene {
       this.updatePlayerCountUI()
     })
 
-    this.physics.world.setBounds(0, 0, 4000, 4000)
-    this.cameras.main.setBounds(0, 0, 4000, 4000)
+    // this.physics.world.setBounds(0, 0, 4000, 4000)
+    // this.cameras.main.setBounds(0, 0, 4000, 4000)
     this.cameras.main.startFollow(this.player)
   }
 
