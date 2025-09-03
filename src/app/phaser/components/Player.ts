@@ -25,7 +25,7 @@ export default class Player extends Phaser.GameObjects.Container {
     D: Phaser.Input.Keyboard.Key
   }
 
-  private speed: number = 200
+  private speed: number = 500
   private maxHealth: number = 100
   private currentHealth: number = 100
   private hasHelmet: boolean = false

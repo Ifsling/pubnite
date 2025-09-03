@@ -1,0 +1,50 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "tiled-map.tmj",
+    "expandedProjectPaths": [
+    ],
+    "file.lastUsedOpenFilter": "All Files (*)",
+    "fileStates": {
+        "": {
+            "scaleInDock": 0.07
+        },
+        "tiled-map.tmj": {
+            "scale": 0.0896,
+            "selectedLayer": 2,
+            "viewCenter": {
+                "x": 4419.642857142858,
+                "y": 4815.848214285714
+            }
+        },
+        "tiled-map.tmj#tileset": {
+            "scaleInDock": 1
+        },
+        "tileset.tsj": {
+            "scaleInDock": 0.08,
+            "scaleInEditor": 0.32
+        }
+    },
+    "last.exportedFilePath": "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/tiled-files",
+    "last.imagePath": "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items",
+    "map.height": 30,
+    "map.lastUsedExportFilter": "JSON map files (*.tmj *.json)",
+    "map.lastUsedFormat": "json",
+    "map.tileHeight": 300,
+    "map.tileWidth": 300,
+    "openFiles": [
+        "tiled-map.tmj"
+    ],
+    "project": "pubnite-map.tiled-project",
+    "recentFiles": [
+        "tiled-map.tmj",
+        "tileset.tsj"
+    ],
+    "tileset.lastUsedFormat": "json",
+    "tileset.tileSize": {
+        "height": 300,
+        "width": 300
+    }
+}

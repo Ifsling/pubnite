@@ -1,3 +1,5 @@
+import Enemy from "./components/Enemy"
+import Player from "./components/Player"
 import GameScene from "./scenes/GameScene"
 
 export function AddPhysicsItem(
@@ -105,4 +107,61 @@ export function showTopLeftOverlayText(
   }
 
   return { container, updateMessage }
+}
+
+export function handleCollisions(
+  scene: GameScene,
+  collidableMapItems: {
+    houses: Phaser.Tilemaps.TilemapLayer | null
+    water: Phaser.Tilemaps.TilemapLayer | null
+    trees: Phaser.Tilemaps.TilemapLayer | null
+    bush: Phaser.Tilemaps.TilemapLayer | null
+    stones: Phaser.Tilemaps.TilemapLayer | null
+  }
+) {
+  // Set collision with map items for player
+  SetCollisionWithMapItems(scene, collidableMapItems, scene.player)
+
+  // Set collision with map items for enemies
+  scene.enemies.forEach((enemy) => {
+    SetCollisionWithMapItems(scene, collidableMapItems, enemy)
+  })
+
+  // Set collision between player and enemies
+  scene.physics.add.collider(scene.player, scene.enemies)
+
+  // Set collision between enemies
+  scene.enemies.forEach((enemy1, index) => {
+    scene.enemies.slice(index + 1).forEach((enemy2) => {
+      scene.physics.add.collider(enemy1, enemy2)
+    })
+  })
+}
+
+function SetCollisionWithMapItems(
+  scene: GameScene,
+  collidableMapItems: {
+    houses: Phaser.Tilemaps.TilemapLayer | null
+    water: Phaser.Tilemaps.TilemapLayer | null
+    trees: Phaser.Tilemaps.TilemapLayer | null
+    bush: Phaser.Tilemaps.TilemapLayer | null
+    stones: Phaser.Tilemaps.TilemapLayer | null
+  },
+  collisionWith: Player | Enemy
+) {
+  if (collidableMapItems.houses) {
+    scene.physics.add.collider(collisionWith, collidableMapItems.houses)
+  }
+  if (collidableMapItems.water) {
+    scene.physics.add.collider(collisionWith, collidableMapItems.water)
+  }
+  if (collidableMapItems.trees) {
+    scene.physics.add.collider(collisionWith, collidableMapItems.trees)
+  }
+  if (collidableMapItems.bush) {
+    scene.physics.add.collider(collisionWith, collidableMapItems.bush)
+  }
+  if (collidableMapItems.stones) {
+    scene.physics.add.collider(collisionWith, collidableMapItems.stones)
+  }
 }

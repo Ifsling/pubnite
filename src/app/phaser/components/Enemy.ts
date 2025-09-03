@@ -16,7 +16,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
   private helmetHealth: number = 0
   private vestHealth: number = 0
   private maxHealth: number = 100
-  private currentHealth: number = 100
+  private currentHealth: number = 10
   private player: Player
   private lastShotTime: number = 0
   private enemyChosenGun: string | null = null
@@ -53,6 +53,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
     body.setOffset(-this.sprite.width / 2, -this.sprite.height / 2)
 
     scene.add.existing(this)
+
   }
 
   private createGun(type: string): Gun {
@@ -116,10 +117,10 @@ export default class Enemy extends Phaser.GameObjects.Container {
         ;(this.gun as Ak47).startFiring()
       }
 
-      this.gun.tryShoot({
-        worldX: this.player.x,
-        worldY: this.player.y,
-      } as Phaser.Input.Pointer)
+      // this.gun.tryShoot({
+      //   worldX: this.player.x,
+      //   worldY: this.player.y,
+      // } as Phaser.Input.Pointer)
       this.lastShotTime = time
     }
 
