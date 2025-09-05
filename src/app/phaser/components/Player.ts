@@ -1,6 +1,7 @@
 import Phaser from "phaser"
 import { ammoAmounts } from "../Constants"
 import { showTopLeftOverlayText } from "../HelperFunctions"
+import GameScene from "../scenes/GameScene"
 import Ak47 from "./guns/Ak47"
 import Gun from "./guns/Gun"
 import Pistol from "./guns/Pistol"
@@ -16,6 +17,10 @@ export default class Player extends Phaser.GameObjects.Container {
   private bag: Phaser.GameObjects.Container
   private activeGunIndex: number
   private overlappingGun: Phaser.GameObjects.Sprite | null = null
+
+  public scene: GameScene
+  public shooterType: "player" | "enemy"
+  private isAlive: boolean = true
 
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private wasdKeys!: {
@@ -33,7 +38,6 @@ export default class Player extends Phaser.GameObjects.Container {
   private helmetHealth: number = 0
   private vestHealth: number = 0
 
-  // Ammo storage
   private ammoStorage: { [key: string]: number } = {
     pistol: 0,
     ak47: 0,
@@ -41,33 +45,28 @@ export default class Player extends Phaser.GameObjects.Container {
     sniper: 0,
   }
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
+  constructor(scene: GameScene, x: number, y: number) {
     super(scene, x, y)
 
-    // Player sprite
+    this.scene = scene
     this.playerSprite = scene.add.sprite(0, 0, "player")
     this.add(this.playerSprite)
 
-    // Guns
     this.gunsContainer = scene.add.container(0, 0)
     this.add(this.gunsContainer)
     this.gunSlots = [null, null, null]
     this.activeGunIndex = -1
 
-    // Helmet
     this.helmet = scene.add.container(0, -30)
     this.add(this.helmet)
 
-    // Vest
     this.vest = scene.add.container(0, 20)
     this.add(this.vest)
 
-    // Bag
     this.bag = scene.add.container(0, 50)
     this.bag.visible = false
     this.add(this.bag)
 
-    // Physics
     scene.physics.world.enable(this)
     const body = this.body as Phaser.Physics.Arcade.Body
     body.setSize(this.playerSprite.width, this.playerSprite.height)
@@ -78,10 +77,10 @@ export default class Player extends Phaser.GameObjects.Container {
     scene.add.existing(this)
 
     this.setupControls()
+    this.shooterType = "player"
   }
 
   private setupControls(): void {
-    // Movement controls
     this.cursors = this.scene!.input!.keyboard!.createCursorKeys()
     this.wasdKeys = this.scene!.input!.keyboard!.addKeys({
       W: Phaser.Input.Keyboard.KeyCodes.W,
@@ -90,8 +89,8 @@ export default class Player extends Phaser.GameObjects.Container {
       D: Phaser.Input.Keyboard.KeyCodes.D,
     }) as any
 
-    // Gun switching and pickup
     this.scene!.input!.keyboard!.on("keydown", (event: KeyboardEvent) => {
+      if (!this.isAlive) return
       switch (event.key) {
         case "1":
           this.setActiveGun(0)
@@ -113,63 +112,22 @@ export default class Player extends Phaser.GameObjects.Container {
       }
     })
 
-    // Mouse controls for shooting
     this.scene!.input!.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      if (!this.isAlive) return
       this.handleMouseDown(pointer)
     })
 
     this.scene!.input!.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+      if (!this.isAlive) return
       this.handleMouseUp(pointer)
     })
   }
 
-  private handleMouseDown(pointer: Phaser.Input.Pointer): void {
-    const activeGun = this.getActiveGun()
-    if (!activeGun) return
-
-    if (activeGun instanceof Ak47) {
-      ;(activeGun as Ak47).startFiring()
-    } else {
-      activeGun.tryShoot(pointer)
-    }
-  }
-
-  private handleMouseUp(pointer: Phaser.Input.Pointer): void {
-    const activeGun = this.getActiveGun()
-    if (activeGun instanceof Ak47) {
-      ;(activeGun as Ak47).stopFiring()
-    }
-  }
-
-  private reloadActiveGun(): void {
-    const activeGun = this.getActiveGun()
-    if (!activeGun) return
-
-    const availableAmmo = this.ammoStorage[activeGun.gunType]
-    if (availableAmmo <= 0) {
-      showTopLeftOverlayText(this.scene, "No ammo available!", 20, 70, 2000)
-      return
-    }
-
-    const ammoNeeded = activeGun.maxAmmo - activeGun.ammo
-    const ammoToGive = Math.min(ammoNeeded, availableAmmo)
-
-    if (ammoToGive > 0) {
-      activeGun.addAmmo(ammoToGive)
-      this.ammoStorage[activeGun.gunType] -= ammoToGive
-      showTopLeftOverlayText(
-        this.scene,
-        `Reloaded ${ammoToGive} rounds`,
-        20,
-        70,
-        2000
-      )
-    }
-  }
-
   public update(): void {
-    // Movement
+    if (!this.isAlive) return
     const body = this.body as Phaser.Physics.Arcade.Body
+    if (!body) return
+
     body.setVelocity(0)
 
     if (this.wasdKeys.A.isDown || this.cursors.left.isDown) {
@@ -186,18 +144,76 @@ export default class Player extends Phaser.GameObjects.Container {
 
     body.velocity.normalize().scale(this.speed)
 
-    // Update active gun
     const activeGun = this.getActiveGun()
     if (activeGun) {
       activeGun.x = this.x
       activeGun.y = this.y
       activeGun.rotateToPointer(this.scene.input.activePointer)
       activeGun.update()
-
-      // Handle automatic firing for AK47
       if (activeGun instanceof Ak47 && this.scene.input.activePointer.isDown) {
-        activeGun.tryShoot(this.scene.input.activePointer)
+        activeGun.tryShoot(this, this.scene.input.activePointer)
       }
+    }
+  }
+
+  private handleMouseDown(pointer: Phaser.Input.Pointer): void {
+    const activeGun = this.getActiveGun()
+    if (!activeGun) return
+    if (activeGun instanceof Ak47) {
+      activeGun.startFiring()
+    } else {
+      activeGun.tryShoot(this, pointer)
+    }
+  }
+
+  private handleMouseUp(pointer: Phaser.Input.Pointer): void {
+    const activeGun = this.getActiveGun()
+    if (activeGun instanceof Ak47) {
+      activeGun.stopFiring()
+    }
+  }
+
+  private reloadActiveGun(): void {
+    const activeGun = this.getActiveGun()
+    if (!activeGun) return
+    const availableAmmo = this.ammoStorage[activeGun.gunType]
+    if (availableAmmo <= 0) {
+      showTopLeftOverlayText(this.scene, "No ammo available!", 20, 70, 2000)
+      return
+    }
+    const ammoNeeded = activeGun.maxAmmo - activeGun.ammo
+    const ammoToGive = Math.min(ammoNeeded, availableAmmo)
+    if (ammoToGive > 0) {
+      activeGun.addAmmo(ammoToGive)
+      this.ammoStorage[activeGun.gunType] -= ammoToGive
+      showTopLeftOverlayText(
+        this.scene,
+        `Reloaded ${ammoToGive} rounds`,
+        20,
+        70,
+        2000
+      )
+    }
+  }
+
+  public addGun(gunSpriteKey: string): void {
+    const emptyIndex = this.gunSlots.findIndex((slot) => slot === null)
+    if (emptyIndex === -1) {
+      showTopLeftOverlayText(
+        this.scene,
+        "You can only carry 3 guns at a time.",
+        20,
+        70,
+        3000
+      )
+      return
+    }
+    const gun = this.createGunInstance(gunSpriteKey)
+    if (!gun) return
+    gun.visible = false
+    this.gunSlots[emptyIndex] = gun
+    if (this.activeGunIndex === -1) {
+      this.setActiveGun(emptyIndex)
     }
   }
 
@@ -216,38 +232,12 @@ export default class Player extends Phaser.GameObjects.Container {
     }
   }
 
-  public addGun(gunSpriteKey: string): void {
-    const emptyIndex = this.gunSlots.findIndex((slot) => slot === null)
-    if (emptyIndex === -1) {
-      showTopLeftOverlayText(
-        this.scene,
-        "You can only carry 3 guns at a time.",
-        20,
-        70,
-        3000
-      )
-      return
-    }
-
-    const gun = this.createGunInstance(gunSpriteKey)
-    if (!gun) return
-
-    gun.visible = false
-    this.gunSlots[emptyIndex] = gun
-
-    if (this.activeGunIndex === -1) {
-      this.setActiveGun(emptyIndex)
-    }
-  }
-
   public setActiveGun(index: number): void {
     const gun = this.gunSlots[index]
     if (!gun) return
-
     this.gunSlots.forEach((g, i) => {
       if (g) g.visible = i === index
     })
-
     this.activeGunIndex = index
   }
 
@@ -279,7 +269,6 @@ export default class Player extends Phaser.GameObjects.Container {
       item = this.overlappingGun
     }
     if (!item) return
-
     switch (item.pickupType) {
       case "gun":
         this.addGun(item.texture.key)
@@ -297,20 +286,17 @@ export default class Player extends Phaser.GameObjects.Container {
         this.addAmmoToStorage(item.texture.key)
         break
     }
-
     item.destroy()
     if (item === this.overlappingGun) this.overlappingGun = null
   }
 
   private addAmmoToStorage(ammoType: string): void {
-    // Map ammo sprites to gun types
     const ammoMap: { [key: string]: string } = {
       pistol_ammo: "pistol",
       ak47_ammo: "ak47",
       shotgun_ammo: "shotgun",
       sniper_ammo: "sniper",
     }
-
     const gunType = ammoMap[ammoType]
     if (gunType) {
       const ammoAmount = this.getAmmoAmount(gunType)
@@ -333,14 +319,12 @@ export default class Player extends Phaser.GameObjects.Container {
     return this.ammoStorage
   }
 
-  // Rest of your existing methods...
   public equipHelmet(helmetSpriteKey: string): void {
     this.helmet.removeAll(true)
     const helmet = this.scene.add
       .sprite(-10, -100, helmetSpriteKey)
       .setOrigin(0.5)
     this.helmet.add(helmet)
-
     this.hasHelmet = true
     this.helmetHealth = 50
     this.recalculateMaxHealth()
@@ -350,7 +334,6 @@ export default class Player extends Phaser.GameObjects.Container {
     this.vest.removeAll(true)
     const vest = this.scene.add.sprite(2, 78, vestSpriteKey).setOrigin(0.5)
     this.vest.add(vest)
-
     this.hasVest = true
     this.vestHealth = 60
     this.recalculateMaxHealth()
@@ -361,7 +344,6 @@ export default class Player extends Phaser.GameObjects.Container {
     this.maxHealth = 100
     if (this.hasHelmet) this.maxHealth += 50
     if (this.hasVest) this.maxHealth += 60
-
     if (this.maxHealth > oldMax) {
       this.currentHealth += this.maxHealth - oldMax
       this.currentHealth = Math.min(this.currentHealth, this.maxHealth)
@@ -392,6 +374,33 @@ export default class Player extends Phaser.GameObjects.Container {
     this.currentHealth -= amount
     if (this.currentHealth < 0) this.currentHealth = 0
     this.recalculateMaxHealth()
+    if (this.currentHealth === 0) {
+      this.killPlayer()
+    }
+  }
+
+  public killPlayer(): void {
+    if (!this.isAlive) return
+    this.isAlive = false
+
+    const body = this.body as Phaser.Physics.Arcade.Body
+    if (body) {
+      body.stop()
+      body.enable = false
+    }
+
+    this.removeAllListeners()
+    this.playerSprite.destroy()
+    this.gunsContainer.destroy()
+    this.helmet.destroy()
+    this.vest.destroy()
+    this.bag.destroy()
+    this.destroy(true)
+  }
+
+  public override removeAllListeners(event?: string | symbol): this {
+    super.removeAllListeners(event)
+    return this
   }
 
   public addItemToBag(itemSpriteKey: string): void {

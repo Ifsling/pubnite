@@ -136,6 +136,16 @@ export function handleCollisions(
       scene.physics.add.collider(enemy1, enemy2)
     })
   })
+
+  scene.enemies.forEach((enemy) => {
+    scene.physics.add.overlap(
+      scene.playerBullets,
+      enemy,
+      enemy.handleBulletHitEnemy,
+      undefined,
+      enemy
+    )
+  })
 }
 
 function SetCollisionWithMapItems(

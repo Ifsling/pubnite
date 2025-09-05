@@ -1,6 +1,6 @@
-// Enemy.ts
 import Phaser from "phaser"
 import { ammoAmounts } from "../Constants"
+import GameScene from "../scenes/GameScene"
 import Ak47 from "./guns/Ak47"
 import Gun from "./guns/Gun"
 import Pistol from "./guns/Pistol"
@@ -21,12 +21,24 @@ export default class Enemy extends Phaser.GameObjects.Container {
   private lastShotTime: number = 0
   private enemyChosenGun: string | null = null
 
-  constructor(scene: Phaser.Scene, x: number, y: number, player: Player) {
+  public scene: GameScene
+  public shooterType: "player" | "enemy"
+
+  // 🔥 Health bar components
+  private healthBarBg: Phaser.GameObjects.Graphics
+  private healthBar: Phaser.GameObjects.Graphics
+  private healthBarWidth: number = 40
+  private healthBarHeight: number = 6
+  private healthBarOffsetY: number = -50
+
+  constructor(scene: GameScene, x: number, y: number, player: Player) {
     super(scene, x, y)
     this.player = player
 
     this.sprite = scene.add.sprite(0, 0, "villian")
     this.add(this.sprite)
+
+    this.scene = scene
 
     // Random equipment
     const equipmentRoll = Phaser.Math.Between(0, 2)
@@ -40,7 +52,6 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
     // Random gun
     const gunTypes = ["pistol", "ak47", "shotgun", "sniper"]
-    // const gunTypes = ["ak47"]
     const chosenGun = gunTypes[Phaser.Math.Between(0, gunTypes.length - 1)]
     this.enemyChosenGun = chosenGun
     this.gun = this.createGun(chosenGun)
@@ -54,6 +65,12 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
     scene.add.existing(this)
 
+    this.shooterType = "enemy"
+
+    // 🔥 Create health bar
+    this.healthBarBg = scene.add.graphics()
+    this.healthBar = scene.add.graphics()
+    this.drawHealthBar()
   }
 
   private createGun(type: string): Gun {
@@ -88,6 +105,35 @@ export default class Enemy extends Phaser.GameObjects.Container {
     this.currentHealth = this.maxHealth
   }
 
+  private drawHealthBar() {
+    const healthPercent = Phaser.Math.Clamp(
+      this.currentHealth / this.maxHealth,
+      0,
+      1
+    )
+
+    this.healthBarBg.clear()
+    this.healthBar.clear()
+
+    // Background (grey or black)
+    this.healthBarBg.fillStyle(0x000000, 1)
+    this.healthBarBg.fillRect(
+      this.x - this.healthBarWidth / 2,
+      this.y + this.healthBarOffsetY,
+      this.healthBarWidth,
+      this.healthBarHeight
+    )
+
+    // Health (red)
+    this.healthBar.fillStyle(0xff0000, 1)
+    this.healthBar.fillRect(
+      this.x - this.healthBarWidth / 2,
+      this.y + this.healthBarOffsetY,
+      this.healthBarWidth * healthPercent,
+      this.healthBarHeight
+    )
+  }
+
   public update(time: number, delta: number) {
     const body = this.body as Phaser.Physics.Arcade.Body
 
@@ -117,10 +163,11 @@ export default class Enemy extends Phaser.GameObjects.Container {
         ;(this.gun as Ak47).startFiring()
       }
 
-      // this.gun.tryShoot({
-      //   worldX: this.player.x,
-      //   worldY: this.player.y,
-      // } as Phaser.Input.Pointer)
+      this.gun.tryShoot(this, {
+        worldX: this.player.x,
+        worldY: this.player.y,
+      } as Phaser.Input.Pointer)
+
       this.lastShotTime = time
     }
 
@@ -133,6 +180,9 @@ export default class Enemy extends Phaser.GameObjects.Container {
       this.player.y
     )
     this.gun.update()
+
+    // 🔥 Update health bar position
+    this.drawHealthBar()
   }
 
   public takeDamage(amount: number) {
@@ -150,12 +200,40 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
     this.currentHealth -= amount
     if (this.currentHealth <= 0) {
+      this.scene.events.emit("enemy-killed", this)
+      this.scene.enemies = this.scene.enemies.filter((e) => e !== this)
+
+      // Remove health bars
+      this.healthBar.destroy()
+      this.healthBarBg.destroy()
+
       this.destroy()
-      this.scene.events.emit("enemy-killed")
+    } else {
+      this.drawHealthBar()
     }
   }
 
   public getHealth() {
     return this.currentHealth
+  }
+
+  public handleBulletHitEnemy(
+    obj1:
+      | Phaser.Types.Physics.Arcade.GameObjectWithBody
+      | Phaser.Physics.Arcade.Body
+      | Phaser.Physics.Arcade.StaticBody
+      | Phaser.Tilemaps.Tile,
+    obj2:
+      | Phaser.Types.Physics.Arcade.GameObjectWithBody
+      | Phaser.Physics.Arcade.Body
+      | Phaser.Physics.Arcade.StaticBody
+      | Phaser.Tilemaps.Tile
+  ): void {
+    const bullet = obj2 as Phaser.Physics.Arcade.Sprite
+    const enemy = obj1 as Enemy
+
+    const damage = (bullet as any).damage || 10
+    enemy.takeDamage(damage)
+    bullet.destroy()
   }
 }

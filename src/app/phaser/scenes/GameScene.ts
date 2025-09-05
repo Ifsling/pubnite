@@ -6,7 +6,6 @@ import Enemy from "../components/Enemy"
 import GunUI from "../components/GunUi"
 import HealthUI from "../components/HealthUi"
 import Player from "../components/Player"
-import { MAP_SCALE_FACTOR } from "../Constants"
 import { AddPhysicsItem, handleCollisions } from "../HelperFunctions"
 import { createMap, spawnableLocations } from "../map/Map"
 import { PreloadAssets } from "../PreloadAssets"
@@ -20,6 +19,8 @@ export default class GameScene extends Phaser.Scene {
   bulletCountUI!: BulletCountUI
   playerCountText!: Phaser.GameObjects.Text
   enemies: Enemy[] = []
+  playerBullets!: Phaser.Physics.Arcade.Group
+  enemyBullets!: Phaser.Physics.Arcade.Group
 
   constructor() {
     super("MyScene")
@@ -53,6 +54,8 @@ export default class GameScene extends Phaser.Scene {
     this.healthUI = new HealthUI(this, this.player)
     this.gunUI = new GunUI(this, this.player)
     this.bulletCountUI = new BulletCountUI(this)
+    this.playerBullets = this.physics.add.group()
+    this.enemyBullets = this.physics.add.group()
 
     handleCollisions(this, {
       houses,
@@ -60,15 +63,6 @@ export default class GameScene extends Phaser.Scene {
       trees,
       bush,
       stones,
-    })
-
-    const TILE_SIZE = 300 * MAP_SCALE_FACTOR
-    const graphics = this.add.graphics()
-
-    graphics.fillStyle(0xff0000, 0.5) // Red, opacity
-
-    locations.forEach(({ x, y }) => {
-      graphics.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
     })
 
     // Add some initial items to bag
@@ -134,8 +128,6 @@ export default class GameScene extends Phaser.Scene {
       new Enemy(this, 1600, 1000, this.player),
     ]
 
-    // this.enemies.forEach((enemy) => this.add.existing(enemy))
-
     this.playerCountText = this.add
       .text(16, 16, "", {
         fontSize: "24px",
@@ -149,12 +141,10 @@ export default class GameScene extends Phaser.Scene {
 
     this.updatePlayerCountUI()
 
-    this.events.on("enemy-killed", () => {
-      this.updatePlayerCountUI()
+    this.events.on("enemy-killed", (enemy: Enemy) => {
+      this.updatePlayerCountUI(enemy)
     })
 
-    // this.physics.world.setBounds(0, 0, 4000, 4000)
-    // this.cameras.main.setBounds(0, 0, 4000, 4000)
     this.cameras.main.startFollow(this.player)
   }
 
@@ -177,10 +167,17 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  private updatePlayerCountUI() {
-    const aliveEnemies = this.enemies.filter((e) => e.active).length
+  private updatePlayerCountUI(enemy?: Enemy) {
+    if (enemy) {
+      const aliveEnemies = this.enemies.filter((e) => e.active).length
 
-    const totalAlive = 1 + aliveEnemies // 1 player + enemies
-    this.playerCountText.setText(`Players Left: ${totalAlive}`)
+      const totalAlive = aliveEnemies
+      this.playerCountText.setText(`Players Left: ${totalAlive}`)
+    } else {
+      const aliveEnemies = this.enemies.filter((e) => e.active).length
+
+      const totalAlive = 1 + aliveEnemies // 1 player + enemies
+      this.playerCountText.setText(`Players Left: ${totalAlive}`)
+    }
   }
 }

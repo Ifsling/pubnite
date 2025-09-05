@@ -9,14 +9,14 @@
     "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
         "": {
-            "scaleInDock": 0.07
+            "scaleInDock": 1
         },
         "tiled-map.tmj": {
-            "scale": 0.0896,
-            "selectedLayer": 2,
+            "scale": 0.0918,
+            "selectedLayer": 7,
             "viewCenter": {
-                "x": 4419.642857142858,
-                "y": 4815.848214285714
+                "x": 5893.246187363835,
+                "y": 4324.618736383442
             }
         },
         "tiled-map.tmj#tileset": {
@@ -35,12 +35,13 @@
     "map.tileHeight": 300,
     "map.tileWidth": 300,
     "openFiles": [
-        "tiled-map.tmj"
+        "tiled-map.tmj",
+        "tileset.tsj"
     ],
     "project": "pubnite-map.tiled-project",
     "recentFiles": [
-        "tiled-map.tmj",
-        "tileset.tsj"
+        "tileset.tsj",
+        "tiled-map.tmj"
     ],
     "tileset.lastUsedFormat": "json",
     "tileset.tileSize": {

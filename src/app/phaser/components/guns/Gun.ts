@@ -1,4 +1,7 @@
 import Phaser from "phaser"
+import GameScene from "../../scenes/GameScene"
+import type Enemy from "../Enemy"
+import type Player from "../Player"
 
 export interface BulletType {
   sprite: string
@@ -15,8 +18,10 @@ export default abstract class Gun extends Phaser.GameObjects.Sprite {
   protected bulletType: BulletType
   public gunType: string
 
+  public gameScene: GameScene
+
   constructor(
-    scene: Phaser.Scene,
+    scene: GameScene,
     x: number,
     y: number,
     key: string,
@@ -32,6 +37,7 @@ export default abstract class Gun extends Phaser.GameObjects.Sprite {
     this.bulletType = bulletType
     this.gunType = gunType
     this.setOrigin(0.5)
+    this.gameScene = scene
   }
 
   public rotateToPointer(pointer: Phaser.Input.Pointer) {
@@ -44,37 +50,69 @@ export default abstract class Gun extends Phaser.GameObjects.Sprite {
     this.setRotation(angle)
   }
 
-  protected createBullet(angle: number): Phaser.Physics.Arcade.Sprite {
-    // Get gun's global position (world coords) instead of local (container) coords
+  protected createBullet(
+    shooter: Player | Enemy,
+    angle: number
+  ): Phaser.Physics.Arcade.Sprite {
     const worldPos = this.getWorldTransformMatrix().transformPoint(0, 0)
 
-    const bullet = this.scene.physics.add.sprite(
+    const bullet = this.gameScene.playerBullets.create(
       worldPos.x,
       worldPos.y,
       this.bulletType.sprite
-    )
+    ) as Phaser.Physics.Arcade.Sprite
 
     bullet.setRotation(angle)
-    if (this.bulletType.scale) {
-      bullet.setScale(this.bulletType.scale)
-    }
+    if (this.bulletType.scale) bullet.setScale(this.bulletType.scale)
+
     this.scene.physics.velocityFromRotation(
       angle,
       this.bulletType.speed,
-      bullet.body.velocity
+      bullet!.body!.velocity
     )
+    ;(bullet as any).damage = this.bulletType.damage
 
-    // Auto-destroy bullets after 3 seconds
     this.scene.time.delayedCall(3000, () => {
-      if (bullet && bullet.active) {
-        bullet.destroy()
-      }
+      if (bullet && bullet.active) bullet.destroy()
     })
+
+    // Setting collision with enemies
+
+    if ((shooter as any).shooterType === "player") {
+      this.gameScene.enemies.forEach((enemy) => {
+        this.scene.physics.add.overlap(
+          this.gameScene.playerBullets,
+          enemy,
+          enemy.handleBulletHitEnemy,
+          undefined,
+          enemy
+        )
+      })
+    } else if ((shooter as any).shooterType === "enemy") {
+      this.scene.physics.add.overlap(
+        bullet,
+        this.gameScene.player,
+        (obj1, obj2) => {
+          const bullet = obj1 as Phaser.Physics.Arcade.Sprite
+          const player = obj2 as Player
+
+          console.log(obj1, obj2)
+
+          player.takeDamage((bullet as any).damage || 10)
+          bullet.destroy()
+        },
+        undefined,
+        this.scene
+      )
+    }
 
     return bullet
   }
 
-  public abstract tryShoot(pointer: Phaser.Input.Pointer): boolean
+  public abstract tryShoot(
+    shooter: Player | Enemy,
+    pointer: Phaser.Input.Pointer
+  ): boolean
   public abstract update(): void
 
   public addAmmo(amount: number): void {
