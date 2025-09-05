@@ -23,4 +23,6 @@ export function PreloadAssets(scene: GameScene) {
   scene.load.image("sniper-bullet", "/images/guns/sniper-bullet.png")
   scene.load.image("shotgun-bullet", "/images/guns/shotgun-bullet.png")
   scene.load.image("villian", "/images/villian.png")
+
+  scene.load.font("BRF", "/fonts/BRF.otf", "opentype")
 }

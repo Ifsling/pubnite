@@ -395,6 +395,10 @@ export default class Player extends Phaser.GameObjects.Container {
     this.helmet.destroy()
     this.vest.destroy()
     this.bag.destroy()
+
+    this.scene.events.emit("player-dead")
+    this.scene.events.emit("enemy-killed", this)
+
     this.destroy(true)
   }
 

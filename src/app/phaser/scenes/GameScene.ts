@@ -2,6 +2,7 @@ import { getOneSpawnLocationWithinMap } from "@/app/utils"
 import Phaser from "phaser"
 import BagUI from "../components/BagUi"
 import BulletCountUI from "../components/BulletCountUi"
+import DeathOverlay from "../components/DeathOverlay"
 import Enemy from "../components/Enemy"
 import GunUI from "../components/GunUi"
 import HealthUI from "../components/HealthUi"
@@ -141,8 +142,13 @@ export default class GameScene extends Phaser.Scene {
 
     this.updatePlayerCountUI()
 
+    // Events listening and handling
     this.events.on("enemy-killed", (enemy: Enemy) => {
       this.updatePlayerCountUI(enemy)
+    })
+
+    this.events.on("player-dead", () => {
+      new DeathOverlay(this, this.enemies)
     })
 
     this.cameras.main.startFollow(this.player)

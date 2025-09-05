@@ -163,10 +163,10 @@ export default class Enemy extends Phaser.GameObjects.Container {
         ;(this.gun as Ak47).startFiring()
       }
 
-      this.gun.tryShoot(this, {
-        worldX: this.player.x,
-        worldY: this.player.y,
-      } as Phaser.Input.Pointer)
+      // this.gun.tryShoot(this, {
+      //   worldX: this.player.x,
+      //   worldY: this.player.y,
+      // } as Phaser.Input.Pointer)
 
       this.lastShotTime = time
     }
