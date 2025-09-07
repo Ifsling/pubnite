@@ -1,6 +1,8 @@
 import GameScene from "./scenes/GameScene"
 
 export function PreloadAssets(scene: GameScene) {
+  GameScene.totalPlayers = 0
+
   scene.load.image("tileset", "/map-items/tileset.png")
   scene.load.tilemapTiledJSON("map", "/map-items/tiled-files/tiled-map.tmj")
 

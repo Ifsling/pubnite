@@ -1,3 +1,4 @@
+import GameScene from "../scenes/GameScene"
 import Enemy from "./Enemy"
 
 export default class DeathOverlay {
@@ -42,12 +43,12 @@ export default class DeathOverlay {
     ;(this.loserText as any).isDeathOverlayElement = true
 
     // Top-right players remaining
-    const aliveEnemies = enemies.filter((e) => e.active).length
-    const totalAlive = 1 + aliveEnemies
+    const playerRank = 1 + enemies.filter((e) => e.active).length
+    const totalAlive = GameScene.totalPlayers
     this.playerCountText = this.scene.add.text(
       this.scene.cameras.main.width - 300,
       80,
-      `#${aliveEnemies}/${totalAlive}`,
+      `#${playerRank}/${totalAlive}`,
       {
         fontFamily: "BRF",
         fontSize: "40px",

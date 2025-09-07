@@ -23,6 +23,8 @@ export default class GameScene extends Phaser.Scene {
   playerBullets!: Phaser.Physics.Arcade.Group
   enemyBullets!: Phaser.Physics.Arcade.Group
 
+  public static totalPlayers: number = 0
+
   constructor() {
     super("MyScene")
   }
@@ -126,7 +128,7 @@ export default class GameScene extends Phaser.Scene {
     this.enemies = [
       new Enemy(this, 1000, 800, this.player),
       new Enemy(this, 1400, 900, this.player),
-      new Enemy(this, 1600, 1000, this.player),
+      // new Enemy(this, 1600, 1000, this.player),
     ]
 
     this.playerCountText = this.add

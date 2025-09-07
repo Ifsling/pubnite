@@ -67,6 +67,8 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
     this.shooterType = "enemy"
 
+    GameScene.totalPlayers += 1
+
     // 🔥 Create health bar
     this.healthBarBg = scene.add.graphics()
     this.healthBar = scene.add.graphics()
@@ -156,6 +158,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
     if (distance <= 2500 && time > this.lastShotTime + 300) {
       if (this.gun.ammo <= 0) {
+        // Auto reload
         this.gun.addAmmo(ammoAmounts[this.enemyChosenGun || "pistol"] || 10)
       }
 
@@ -163,12 +166,14 @@ export default class Enemy extends Phaser.GameObjects.Container {
         ;(this.gun as Ak47).startFiring()
       }
 
-      // this.gun.tryShoot(this, {
-      //   worldX: this.player.x,
-      //   worldY: this.player.y,
-      // } as Phaser.Input.Pointer)
+      if (this.player.isAlive) {
+        this.gun.tryShoot(this, {
+          worldX: this.player.x,
+          worldY: this.player.y,
+        } as Phaser.Input.Pointer)
 
-      this.lastShotTime = time
+        this.lastShotTime = time
+      }
     }
 
     this.gun.x = 0

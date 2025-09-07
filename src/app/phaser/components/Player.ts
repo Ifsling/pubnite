@@ -20,7 +20,7 @@ export default class Player extends Phaser.GameObjects.Container {
 
   public scene: GameScene
   public shooterType: "player" | "enemy"
-  private isAlive: boolean = true
+  public isAlive: boolean = true
 
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private wasdKeys!: {
@@ -78,6 +78,8 @@ export default class Player extends Phaser.GameObjects.Container {
 
     this.setupControls()
     this.shooterType = "player"
+
+    GameScene.totalPlayers += 1
   }
 
   private setupControls(): void {
