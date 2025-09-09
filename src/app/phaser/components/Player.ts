@@ -30,6 +30,7 @@ export default class Player extends Phaser.GameObjects.Container {
     D: Phaser.Input.Keyboard.Key
   }
 
+  private defaultSpeed: number = 500
   private speed: number = 500
   private maxHealth: number = 100
   private currentHealth: number = 100
@@ -45,12 +46,20 @@ export default class Player extends Phaser.GameObjects.Container {
     sniper: 0,
   }
 
-  constructor(scene: GameScene, x: number, y: number, size: number = 1) {
+  constructor(
+    scene: GameScene,
+    x: number,
+    y: number,
+    size: number = 1,
+    speed?: number
+  ) {
     super(scene, x, y)
 
     this.scene = scene
     this.playerSprite = scene.add.sprite(0, 0, "player").setScale(size)
     this.add(this.playerSprite)
+    if (speed) this.speed = speed
+    else this.speed = this.defaultSpeed
 
     this.gunsContainer = scene.add.container(0, 0)
     this.add(this.gunsContainer)
@@ -259,6 +268,14 @@ export default class Player extends Phaser.GameObjects.Container {
       if (this.activeGunIndex === index) {
         this.activeGunIndex = -1
       }
+    }
+  }
+
+  public setSpeed(newSpeed: number): void {
+    if (newSpeed === -1) {
+      this.speed = this.defaultSpeed
+    } else {
+      this.speed = newSpeed
     }
   }
 
