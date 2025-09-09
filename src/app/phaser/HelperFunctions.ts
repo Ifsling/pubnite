@@ -119,8 +119,16 @@ export function handleCollisions(
     stones: Phaser.Tilemaps.TilemapLayer | null
   }
 ) {
+  // Store colliders list
+  scene.outsideColliders = []
+
+  // Player vs map items
   // Set collision with map items for player
-  SetCollisionWithMapItems(scene, collidableMapItems, scene.player)
+  scene.outsideColliders.push(
+    ...SetCollisionWithMapItems(scene, collidableMapItems, scene.player)
+  )
+
+  // SetCollisionWithMapItems(scene, collidableMapItems, scene.player)
 
   // Set collision with map items for enemies
   scene.enemies.forEach((enemy) => {
@@ -158,20 +166,36 @@ function SetCollisionWithMapItems(
     stones: Phaser.Tilemaps.TilemapLayer | null
   },
   collisionWith: Player | Enemy
-) {
+): Phaser.Physics.Arcade.Collider[] {
+  const colliders: Phaser.Physics.Arcade.Collider[] = []
+
   if (collidableMapItems.houses) {
-    scene.physics.add.collider(collisionWith, collidableMapItems.houses)
+    colliders.push(
+      scene.physics.add.collider(collisionWith, collidableMapItems.houses)
+    )
   }
   if (collidableMapItems.water) {
-    scene.physics.add.collider(collisionWith, collidableMapItems.water)
+    colliders.push(
+      scene.physics.add.collider(collisionWith, collidableMapItems.water)
+    )
   }
   if (collidableMapItems.trees) {
-    scene.physics.add.collider(collisionWith, collidableMapItems.trees)
+    colliders.push(
+      scene.physics.add.collider(collisionWith, collidableMapItems.trees)
+    )
   }
   if (collidableMapItems.bush) {
-    scene.physics.add.collider(collisionWith, collidableMapItems.bush)
+    colliders.push(
+      scene.physics.add.collider(collisionWith, collidableMapItems.bush)
+    )
   }
   if (collidableMapItems.stones) {
-    scene.physics.add.collider(collisionWith, collidableMapItems.stones)
+    colliders.push(
+      scene.physics.add.collider(collisionWith, collidableMapItems.stones)
+    )
   }
+
+  console.log("Colliders set:", colliders)
+
+  return colliders
 }

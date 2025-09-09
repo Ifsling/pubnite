@@ -1,10 +1,10 @@
+import { loadMapData } from "../../utils"
 import { MAP_SCALE_FACTOR } from "../Constants"
 import GameScene from "../scenes/GameScene"
-import { mapItemsData } from "./TEMP_mapData"
 
 export function createMap(scene: GameScene) {
   const map = scene.make.tilemap({ key: "map" })
-  const tileset = map.addTilesetImage(
+const tileset = map.addTilesetImage(
     map.tilesets[0]?.name || "tileset",
     "tileset"
   )
@@ -64,7 +64,9 @@ export function createMap(scene: GameScene) {
   }
 }
 
-export function spawnableLocations() {
+export async function spawnableLocations() {
+  const mapItemsData = await loadMapData()
+
   let locations = []
 
   let target, exists
@@ -79,11 +81,10 @@ export function spawnableLocations() {
   }
 
   target = { x: 20, y: 7 }
-  console.log("exists 1 -> ", DoesItExist(locations, target))
 
   const blocked = new Set()
 
-  mapItemsData.layers.forEach((layer) => {
+  mapItemsData.layers.forEach((layer: any) => {
     if (
       layer.name === "Background" ||
       layer.name === "Road" ||
@@ -91,7 +92,7 @@ export function spawnableLocations() {
     )
       return
 
-    layer.data.forEach((tileId, index) => {
+    layer.data.forEach((tileId: any, index: any) => {
       if (tileId !== 0) {
         const x = index % width
         const y = Math.floor(index / width)
@@ -135,14 +136,5 @@ export function spawnableLocations() {
     locations.push({ x, y })
   })
 
-  console.log("exists 2 -> ", DoesItExist(locations, target))
-
   return locations
-}
-
-function DoesItExist(
-  locations: { x: number; y: number }[],
-  target: { x: number; y: number }
-) {
-  return locations.some((obj) => obj.x === target.x && obj.y === target.y)
 }

@@ -3,9 +3,22 @@ import GameScene from "./scenes/GameScene"
 export function PreloadAssets(scene: GameScene) {
   GameScene.totalPlayers = 0
 
-  scene.load.image("tileset", "/map-items/tileset.png")
-  scene.load.tilemapTiledJSON("map", "/map-items/tiled-files/tiled-map.tmj")
+  scene.textures.generate("blank", {
+    data: ["."],
+    pixelWidth: 1,
+    pixelHeight: 1,
+  })
 
+  scene.load.image("tileset", "/map-items/tileset.png")
+  scene.load.image("rooms_tileset", "/map-items/rooms_tileset.png")
+
+  scene.load.tilemapTiledJSON("map", "/map-items/tiled-files/tiled-map.tmj")
+  scene.load.tilemapTiledJSON("room_one", "/map-items/rooms/room_one.tmj")
+  scene.load.tilemapTiledJSON("room_two", "/map-items/rooms/room_two.tmj")
+  scene.load.tilemapTiledJSON("room_three", "/map-items/rooms/room_three.tmj")
+  scene.load.tilemapTiledJSON("room_four", "/map-items/rooms/room_four.tmj")
+
+  scene.load.image("white-circle", "/images/white-circle.png")
   scene.load.image("house", "/images/temp/house.png")
   scene.load.image("stone", "/images/temp/stone.png")
   scene.load.image("player", "/images/player.png")

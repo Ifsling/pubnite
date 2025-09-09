@@ -1,4 +1,4 @@
-import Phaser from "phaser"
+import * as Phaser from "phaser"
 import { ammoAmounts } from "../Constants"
 import { showTopLeftOverlayText } from "../HelperFunctions"
 import GameScene from "../scenes/GameScene"
@@ -45,11 +45,11 @@ export default class Player extends Phaser.GameObjects.Container {
     sniper: 0,
   }
 
-  constructor(scene: GameScene, x: number, y: number) {
+  constructor(scene: GameScene, x: number, y: number, size: number = 1) {
     super(scene, x, y)
 
     this.scene = scene
-    this.playerSprite = scene.add.sprite(0, 0, "player")
+    this.playerSprite = scene.add.sprite(0, 0, "player").setScale(size)
     this.add(this.playerSprite)
 
     this.gunsContainer = scene.add.container(0, 0)

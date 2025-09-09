@@ -1,4 +1,4 @@
-import Phaser from "phaser"
+import * as Phaser from "phaser"
 import { ammoAmounts } from "../Constants"
 import GameScene from "../scenes/GameScene"
 import Ak47 from "./guns/Ak47"
@@ -73,6 +73,8 @@ export default class Enemy extends Phaser.GameObjects.Container {
     this.healthBarBg = scene.add.graphics()
     this.healthBar = scene.add.graphics()
     this.drawHealthBar()
+
+    scene.enemies.push(this)
   }
 
   private createGun(type: string): Gun {
@@ -166,14 +168,14 @@ export default class Enemy extends Phaser.GameObjects.Container {
         ;(this.gun as Ak47).startFiring()
       }
 
-      if (this.player.isAlive) {
-        this.gun.tryShoot(this, {
-          worldX: this.player.x,
-          worldY: this.player.y,
-        } as Phaser.Input.Pointer)
+      // if (this.player.isAlive) {
+      //   this.gun.tryShoot(this, {
+      //     worldX: this.player.x,
+      //     worldY: this.player.y,
+      //   } as Phaser.Input.Pointer)
 
-        this.lastShotTime = time
-      }
+      //   this.lastShotTime = time
+      // }
     }
 
     this.gun.x = 0

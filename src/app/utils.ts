@@ -1,8 +1,8 @@
 import { MAP_SCALE_FACTOR } from "./phaser/Constants"
 import { spawnableLocations } from "./phaser/map/Map"
 
-export function getOneSpawnLocationWithinMap() {
-  const locations = spawnableLocations()
+export async function getOneSpawnLocationWithinMap() {
+  const locations = await spawnableLocations()
   const randNum = Math.floor(Math.random() * locations.length)
   const randGridPoint: { x: number; y: number } = locations[randNum]
 
@@ -11,12 +11,12 @@ export function getOneSpawnLocationWithinMap() {
     y: randGridPoint.y * 300 * MAP_SCALE_FACTOR + 150 * MAP_SCALE_FACTOR,
   }
 }
-export function getRandomSpawnLocationWithinRadius(
+export async function getRandomSpawnLocationWithinRadius(
   x: number,
   y: number,
   radius: number
 ) {
-  const locations = spawnableLocations()
+  const locations = await spawnableLocations()
   const randomPointsWithinReach = locations.filter((roadPoint) => {
     // Convert grid coordinates to world coordinates
     const { x: gridX, y: gridY } = gridToWorldCoordinates(
@@ -58,4 +58,11 @@ export function gridToWorldCoordinates(
     x: (gridX - 1) * 300 * MAP_SCALE_FACTOR + 150 * MAP_SCALE_FACTOR,
     y: (gridY - 1) * 300 * MAP_SCALE_FACTOR + 150 * MAP_SCALE_FACTOR,
   }
+}
+
+export async function loadMapData() {
+  const res = await fetch("/map-items/tiled-files/tiled-map.tmj")
+  const data = await res.json()
+
+  return data
 }
