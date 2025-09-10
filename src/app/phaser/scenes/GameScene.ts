@@ -8,6 +8,7 @@ import GunUI from "../components/GunUi"
 import HealthUI from "../components/HealthUi"
 import Player from "../components/Player"
 import PlayerCountUI from "../components/PlayerCountUi"
+import RoomManager from "../components/RoomManager"
 import SpreadHouseEntries from "../components/SpreadHouseEntries"
 import { handleCollisions } from "../HelperFunctions"
 import { createMap } from "../map/Map"
@@ -24,6 +25,13 @@ export default class GameScene extends Phaser.Scene {
   enemies: Enemy[] = []
   playerBullets!: Phaser.Physics.Arcade.Group
   enemyBullets!: Phaser.Physics.Arcade.Group
+  roomManager!: RoomManager
+  roomsInformation: {
+    point: [x: number, y: number]
+    room_type: string
+    looted: boolean
+    noOfItemsLooted: number
+  }[] = []
 
   outsideColliders: Phaser.Physics.Arcade.Collider[] = []
 
@@ -62,6 +70,7 @@ export default class GameScene extends Phaser.Scene {
     this.playerBullets = this.physics.add.group()
     this.enemyBullets = this.physics.add.group()
     this.playerCountUI = new PlayerCountUI(this)
+    this.roomManager = new RoomManager(this)
 
     handleCollisions(this, {
       houses,
@@ -71,7 +80,7 @@ export default class GameScene extends Phaser.Scene {
       stones,
     })
 
-    SpreadHouseEntries(this)
+    SpreadHouseEntries(this, this.roomManager) // pass it in
 
     this.playerCountUI.update()
 
@@ -92,6 +101,7 @@ export default class GameScene extends Phaser.Scene {
     this.bagUI.update()
     this.healthUI.update()
     this.gunUI.update()
+    this.roomManager?.update()
     this.bulletCountUI.update(this.player.getActiveGun())
 
     this.enemies.forEach((enemy) => {

@@ -3,7 +3,7 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "tiled-map.tmj",
+    "activeFile": "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_one.tmj",
     "expandedProjectPaths": [
     ],
     "file.lastUsedOpenFilter": "All Files (*)",
@@ -16,7 +16,7 @@
         },
         "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_four.tmj": {
             "scale": 0.7884,
-            "selectedLayer": 1,
+            "selectedLayer": 2,
             "viewCenter": {
                 "x": 759.7666159309995,
                 "y": 391.9330289193303
@@ -27,10 +27,10 @@
         },
         "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_one.tmj": {
             "scale": 0.7204,
-            "selectedLayer": 1,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 591.3381454747363,
-                "y": 442.8095502498611
+                "x": 581.6213214880622,
+                "y": 431.704608550805
             }
         },
         "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_one.tmj#maps_tileset": {
@@ -38,7 +38,7 @@
         },
         "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_three.tmj": {
             "scale": 0.843,
-            "selectedLayer": 1,
+            "selectedLayer": 2,
             "viewCenter": {
                 "x": 819.6915776986951,
                 "y": 389.0865954922894
@@ -49,7 +49,7 @@
         },
         "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_two.tmj": {
             "scale": 0.6316,
-            "selectedLayer": 1,
+            "selectedLayer": 2,
             "viewCenter": {
                 "x": 653.8948701709942,
                 "y": 457.56808106396454
@@ -66,8 +66,8 @@
             "scale": 0.09,
             "selectedLayer": 7,
             "viewCenter": {
-                "x": 5822.222222222221,
-                "y": 4244.444444444443
+                "x": 4494.444444444445,
+                "y": 4427.777777777777
             }
         },
         "tiled-map.tmj#rooms_tileset": {
@@ -93,13 +93,20 @@
     "map.width": 30,
     "openFiles": [
         "tiled-map.tmj",
-        "tileset.tsj"
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_one.tmj",
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_two.tmj",
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_three.tmj",
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_four.tmj"
     ],
     "project": "pubnite-map.tiled-project",
     "recentFiles": [
+        "tiled-map.tmj",
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_four.tmj",
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_three.tmj",
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_two.tmj",
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_one.tmj",
         "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/rooms_tileset.tsj",
-        "tileset.tsj",
-        "tiled-map.tmj"
+        "tileset.tsj"
     ],
     "tileset.embedInMap": true,
     "tileset.lastUsedFormat": "json",

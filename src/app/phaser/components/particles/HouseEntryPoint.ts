@@ -21,9 +21,10 @@ export class HouseEntryPoint {
 
     // --- Physics body (invisible) ---
     this.physicsBody = scene.physics.add.sprite(x, y, undefined as any)
-    this.physicsBody.setCircle(this.radius)
-    this.physicsBody.setImmovable(true)
-    this.physicsBody.setVisible(false)
+    ;(this.physicsBody.body as Phaser.Physics.Arcade.Body)
+      .setCircle(this.radius, -this.radius + 18, -this.radius + 18)
+      .setImmovable(true)
+      .setAllowGravity(false)
 
     // --- Sync visuals to physics body ---
     scene.events.on("update", () => {
