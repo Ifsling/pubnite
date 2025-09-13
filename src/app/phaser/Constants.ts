@@ -1,4 +1,5 @@
 export const MAP_SCALE_FACTOR = 1.4
+export const COLLECTABLE_SPAWN_CHANCE = 0.1
 
 export const ammoAmounts: { [key: string]: number } = {
   pistol: 15,
@@ -6,6 +7,24 @@ export const ammoAmounts: { [key: string]: number } = {
   shotgun: 10,
   sniper: 5,
 }
+
+export type PickupType =
+  | "gun"
+  | "helmet"
+  | "vest"
+  | "bagItem"
+  | "ammo"
+  | "sliptrap"
+  | "faster-boi"
+
+export const COLLECTABLES = [
+  "ouchwrap",
+  "healbox",
+  "sliptrap",
+  "faster-boi",
+  "slowmo-injection",
+  "boomnut",
+]
 
 export const houseEntryPoints = [
   [7, 5],

@@ -1,7 +1,8 @@
 import * as Phaser from "phaser"
-import { ammoAmounts } from "../Constants"
+import { ammoAmounts, PickupType } from "../Constants"
 import { showTopLeftOverlayText } from "../HelperFunctions"
 import GameScene from "../scenes/GameScene"
+import type Enemy from "./Enemy"
 import Ak47 from "./guns/Ak47"
 import Gun from "./guns/Gun"
 import Pistol from "./guns/Pistol"
@@ -283,7 +284,9 @@ export default class Player extends Phaser.GameObjects.Container {
     this.overlappingGun = item
   }
 
-  public tryPickup(item?: Phaser.GameObjects.Sprite & { pickupType?: string }) {
+  public tryPickup(
+    item?: Phaser.GameObjects.Sprite & { pickupType?: PickupType }
+  ) {
     if (!item && this.overlappingGun) {
       item = this.overlappingGun
     }
@@ -389,6 +392,13 @@ export default class Player extends Phaser.GameObjects.Container {
     return this.currentHealth
   }
 
+  public addHealth(amount: number): void {
+    this.currentHealth += amount
+    if (this.currentHealth > this.maxHealth) {
+      this.currentHealth = this.maxHealth
+    }
+  }
+
   public takeDamage(amount: number): void {
     this.currentHealth -= amount
     if (this.currentHealth < 0) this.currentHealth = 0
@@ -427,7 +437,21 @@ export default class Player extends Phaser.GameObjects.Container {
   }
 
   public addItemToBag(itemSpriteKey: string): void {
-    const item = this.scene.add.sprite(0, 0, itemSpriteKey)
+    let spriteKey = itemSpriteKey
+
+    switch (itemSpriteKey) {
+      case "ouchwrap":
+        spriteKey = "ouchwrap-no-glow"
+        break
+      case "healbox":
+        spriteKey = "healbox-no-glow"
+        break
+      case "boomnut":
+        spriteKey = "boomnut-no-glow"
+        break
+    }
+
+    const item = this.scene.add.sprite(0, 0, spriteKey)
     this.bag.add(item)
   }
 
@@ -435,6 +459,46 @@ export default class Player extends Phaser.GameObjects.Container {
     return this.bag
       .getAll()
       .map((i) => (i as Phaser.GameObjects.Sprite).texture.key)
+  }
+
+  public handleFasterBoi() {
+    // increase speed for 5 seconds
+    this.speed = this.defaultSpeed * 2
+    this.scene.time.delayedCall(5000, () => {
+      this.speed = this.defaultSpeed
+    })
+  }
+
+  public handleSlipTrap() {
+    let nearestDistance = Infinity
+    let nearestEnemy: Enemy | null = null
+
+    const enemies = this.scene.enemies as Enemy[]
+    for (let i = 0; i < enemies.length; i++) {
+      const e = enemies[i]
+      const dist = Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y)
+      if (dist < nearestDistance) {
+        nearestDistance = dist
+        nearestEnemy = e
+      }
+    }
+
+    if (nearestEnemy) {
+      console.log(nearestEnemy)
+      // push the player towards the enemy for 4 seconds
+      const angle = Phaser.Math.Angle.Between(
+        this.x,
+        this.y,
+        nearestEnemy.x,
+        nearestEnemy.y
+      )
+      const pushSpeed = 300
+      const body = this.body as Phaser.Physics.Arcade.Body
+      body.setVelocity(Math.cos(angle) * pushSpeed, Math.sin(angle) * pushSpeed)
+      this.scene.time.delayedCall(4000, () => {
+        body.setVelocity(0)
+      })
+    }
   }
 
   public removeItemFromBag(key: string): void {

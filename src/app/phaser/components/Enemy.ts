@@ -2,11 +2,11 @@ import * as Phaser from "phaser"
 import { ammoAmounts } from "../Constants"
 import GameScene from "../scenes/GameScene"
 import Ak47 from "./guns/Ak47"
-import Gun from "./guns/Gun"
+import Gun, { GUN_RELOAD_TIME } from "./guns/Gun"
 import Pistol from "./guns/Pistol"
 import Shotgun from "./guns/Shotgun"
 import Sniper from "./guns/Sniper"
-import Player from "./Player"
+import type Player from "./Player"
 
 export default class Enemy extends Phaser.GameObjects.Container {
   private sprite: Phaser.GameObjects.Sprite
@@ -161,7 +161,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
     if (distance <= 2500 && time > this.lastShotTime + 300) {
       if (this.gun.ammo <= 0) {
         // Auto reload
-        this.gun.addAmmo(ammoAmounts[this.enemyChosenGun || "pistol"] || 10)
+        this.reload(this.enemyChosenGun)
       }
 
       if (this.enemyChosenGun === "ak47") {
@@ -190,6 +190,33 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
     // 🔥 Update health bar position
     this.drawHealthBar()
+  }
+
+  private reload(gunType: string | null) {
+    // wait for reload amount of time
+    let reloadTime
+
+    switch (gunType) {
+      case "pistol":
+        reloadTime = GUN_RELOAD_TIME.pistol
+        break
+      case "ak47":
+        reloadTime = GUN_RELOAD_TIME.ak47
+        break
+      case "shotgun":
+        reloadTime = GUN_RELOAD_TIME.shotgun
+        break
+      case "sniper":
+        reloadTime = GUN_RELOAD_TIME.sniper
+        break
+      default:
+        reloadTime = GUN_RELOAD_TIME.shotgun
+    }
+
+    this.scene.time.delayedCall(reloadTime, () => {
+      const ammoToAdd = ammoAmounts[gunType || "pistol"] || 10
+      this.gun.addAmmo(ammoToAdd)
+    })
   }
 
   public takeDamage(amount: number) {

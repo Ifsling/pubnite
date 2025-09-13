@@ -70,8 +70,9 @@ export default class BagUI {
       .forEach((child) => child.destroy())
 
     const items = this.player.getBagItems()
-    console.log(items)
     items.forEach((key, index) => {
+      key = key.replace("-no-glow", "")
+
       const y = 50 + index * 60
 
       const icon = this.scene.add

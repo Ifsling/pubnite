@@ -38,6 +38,28 @@ export function PreloadAssets(scene: GameScene) {
   scene.load.image("sniper-bullet", "/images/guns/sniper-bullet.png")
   scene.load.image("shotgun-bullet", "/images/guns/shotgun-bullet.png")
   scene.load.image("villian", "/images/villian.png")
+  scene.load.image("ouchwrap", "/images/collectables/ouchwrap.png")
+  scene.load.image("healbox", "/images/collectables/healbox.png")
+  scene.load.image("grave-box", "/images/collectables/grave-box.png")
+  scene.load.image("boomnut", "/images/collectables/boomnut.png")
+  scene.load.image("faster-boi", "/images/collectables/faster-boi.png")
+  scene.load.image("sliptrap", "/images/collectables/sliptrap.png")
+  scene.load.image(
+    "slowmo-injection", 
+    "/images/collectables/slowmo-injection.png"
+  )
+  scene.load.image(
+    "ouchwrap-no-glow",
+    "/images/collectables/without-glow/ouchwrap.png"
+  )
+  scene.load.image(
+    "healbox-no-glow",
+    "/images/collectables/without-glow/healbox.png"
+  )
+  scene.load.image(
+    "boomnut-no-glow",
+    "/images/collectables/without-glow/boomnut.png"
+  )
 
   scene.load.font("BRF", "/fonts/BRF.otf", "opentype")
 }

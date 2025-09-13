@@ -10,8 +10,13 @@ import Player from "../components/Player"
 import PlayerCountUI from "../components/PlayerCountUi"
 import RoomManager from "../components/RoomManager"
 import SpreadHouseEntries from "../components/SpreadHouseEntries"
-import { handleCollisions } from "../HelperFunctions"
-import { createMap } from "../map/Map"
+import {
+  COLLECTABLE_SPAWN_CHANCE,
+  COLLECTABLES,
+  MAP_SCALE_FACTOR,
+} from "../Constants"
+import { AddPhysicsItem, handleCollisions } from "../HelperFunctions"
+import { createMap, spawnableLocations } from "../map/Map"
 import { PreloadAssets } from "../PreloadAssets"
 
 export default class GameScene extends Phaser.Scene {
@@ -71,6 +76,45 @@ export default class GameScene extends Phaser.Scene {
     this.enemyBullets = this.physics.add.group()
     this.playerCountUI = new PlayerCountUI(this)
     this.roomManager = new RoomManager(this)
+
+    // ---------- DELETE THIS -------------
+
+    new Enemy(this, 1500, 2500, this.player)
+
+    // -----------------------------------
+
+    spawnableLocations().then((locations) => {
+      locations.forEach((loc) => {
+        let randVal = Math.random()
+
+        var randItem = COLLECTABLES[(Math.random() * COLLECTABLES.length) | 0]
+        const pickupType =
+          randItem === "ouchwrap" ||
+          randItem === "healbox" ||
+          randItem === "boomnut" ||
+          randItem === "slowmo-injection"
+            ? "bagItem"
+            : randItem === "faster-boi"
+            ? "faster-boi"
+            : randItem === "sliptrap"
+            ? "sliptrap"
+            : "bagItem"
+
+        // To reduce number of enemies
+        if (randVal < COLLECTABLE_SPAWN_CHANCE) {
+          AddPhysicsItem(
+            this,
+            randItem,
+            loc.x * 300 * MAP_SCALE_FACTOR + 150 * MAP_SCALE_FACTOR,
+            loc.y * 300 * MAP_SCALE_FACTOR + 150 * MAP_SCALE_FACTOR,
+            true,
+            false,
+            true,
+            pickupType
+          )
+        }
+      })
+    })
 
     handleCollisions(this, {
       houses,

@@ -1,5 +1,6 @@
 import Enemy from "./components/Enemy"
 import Player from "./components/Player"
+import { PickupType } from "./Constants"
 import GameScene from "./scenes/GameScene"
 
 export function AddPhysicsItem(
@@ -10,7 +11,7 @@ export function AddPhysicsItem(
   isCollectable: boolean = false,
   isCollidable: boolean = true,
   isImmovable: boolean = true,
-  pickupType: string | null = null
+  pickupType: PickupType | null = null
 ) {
   const item = scene.add.sprite(x, y, itemCode).setOrigin(0.5, 0.5)
   scene.physics.add.existing(item)
@@ -28,15 +29,23 @@ export function AddPhysicsItem(
   } else {
     body.setImmovable(true)
 
-    if (pickupType === "gun") {
-      scene.physics.add.overlap(scene.player, item, () => {
-        scene.player.setOverlappingGun(item) // custom method
-      })
-    } else {
-      scene.physics.add.overlap(scene.player, item, () => {
-        scene.player.tryPickup(item)
-      })
-    }
+    scene.physics.add.overlap(scene.player, item, () => {
+      switch (pickupType) {
+        case "gun":
+          scene.player.setOverlappingGun(item) // custom method
+          break
+        case "faster-boi":
+          item.destroy()
+          scene.player.handleFasterBoi()
+          break
+        case "sliptrap":
+          scene.player.handleSlipTrap()
+          item.destroy()
+          break
+        default:
+          scene.player.tryPickup(item)
+      }
+    })
   }
 
   return item
@@ -143,16 +152,6 @@ export function handleCollisions(
     scene.enemies.slice(index + 1).forEach((enemy2) => {
       scene.physics.add.collider(enemy1, enemy2)
     })
-  })
-
-  scene.enemies.forEach((enemy) => {
-    scene.physics.add.overlap(
-      scene.playerBullets,
-      enemy,
-      enemy.handleBulletHitEnemy,
-      undefined,
-      enemy
-    )
   })
 }
 

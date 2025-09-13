@@ -10,6 +10,13 @@ export interface BulletType {
   scale?: number
 }
 
+export const GUN_RELOAD_TIME = {
+  pistol: 2000,
+  ak47: 3000,
+  shotgun: 4000,
+  sniper: 5000,
+}
+
 export default abstract class Gun extends Phaser.GameObjects.Sprite {
   public ammo: number
   public maxAmmo: number
@@ -78,33 +85,33 @@ export default abstract class Gun extends Phaser.GameObjects.Sprite {
 
     // Setting collision with enemies
 
-    if ((shooter as any).shooterType === "player") {
-      this.gameScene.enemies.forEach((enemy) => {
-        this.scene.physics.add.overlap(
-          this.gameScene.playerBullets,
-          enemy,
-          enemy.handleBulletHitEnemy,
-          undefined,
-          enemy
-        )
-      })
-    } else if ((shooter as any).shooterType === "enemy") {
-      this.scene.physics.add.overlap(
-        bullet,
-        this.gameScene.player,
-        (obj1, obj2) => {
-          const bullet = obj1 as Phaser.Physics.Arcade.Sprite
-          const player = obj2 as Player
+    // if ((shooter as any).shooterType === "player") {
+    //   this.gameScene.enemies.forEach((enemy) => {
+    //     this.scene.physics.add.overlap(
+    //       this.gameScene.playerBullets,
+    //       enemy,
+    //       enemy.handleBulletHitEnemy,
+    //       undefined,
+    //       enemy
+    //     )
+    //   })
+    // } else if ((shooter as any).shooterType === "enemy") {
+    //   this.scene.physics.add.overlap(
+    //     bullet,
+    //     this.gameScene.player,
+    //     (obj1, obj2) => {
+    //       const bullet = obj1 as Phaser.Physics.Arcade.Sprite
+    //       const player = obj2 as Player
 
-          console.log(obj1, obj2)
+    //       console.log(obj1, obj2)
 
-          player.takeDamage((bullet as any).damage || 10)
-          bullet.destroy()
-        },
-        undefined,
-        this.scene
-      )
-    }
+    //       player.takeDamage((bullet as any).damage || 10)
+    //       bullet.destroy()
+    //     },
+    //     undefined,
+    //     this.scene
+    //   )
+    // }
 
     return bullet
   }
