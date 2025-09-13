@@ -23,6 +23,13 @@ export default class Player extends Phaser.GameObjects.Container {
   public shooterType: "player" | "enemy"
   public isAlive: boolean = true
 
+  // --- Grenade aim state ---
+  private grenadeArmed = false
+  private aimingGrenade = false
+  private armBlockUntil = 0
+  private aimDots: Phaser.GameObjects.Arc[] = []
+  private bombIcon?: Phaser.GameObjects.Image
+
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private wasdKeys!: {
     W: Phaser.Input.Keyboard.Key
@@ -34,7 +41,7 @@ export default class Player extends Phaser.GameObjects.Container {
   private defaultSpeed: number = 500
   private speed: number = 500
   private maxHealth: number = 100
-  private currentHealth: number = 100
+  private currentHealth: number = 20
   private hasHelmet: boolean = false
   private hasVest: boolean = false
   private helmetHealth: number = 0
@@ -46,6 +53,10 @@ export default class Player extends Phaser.GameObjects.Container {
     shotgun: 0,
     sniper: 0,
   }
+
+  // --- Slip state (prevents update() from zeroing the velocity) ---
+  private slipUntil: number = 0
+  private slipVel: Phaser.Math.Vector2 | null = null
 
   constructor(
     scene: GameScene,
@@ -133,6 +144,14 @@ export default class Player extends Phaser.GameObjects.Container {
       if (!this.isAlive) return
       this.handleMouseUp(pointer)
     })
+
+    this.scene!.input!.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+      if (!this.isAlive || !this.aimingGrenade) return
+      const origin = new Phaser.Math.Vector2(this.x, this.y)
+      const to = new Phaser.Math.Vector2(pointer.worldX, pointer.worldY)
+      const vel = this.getAimVelocity(origin, to)
+      this.renderAimDots(origin, vel)
+    })
   }
 
   public update(): void {
@@ -140,21 +159,41 @@ export default class Player extends Phaser.GameObjects.Container {
     const body = this.body as Phaser.Physics.Arcade.Body
     if (!body) return
 
-    body.setVelocity(0)
+    const now = this.scene.time.now
 
-    if (this.wasdKeys.A.isDown || this.cursors.left.isDown) {
-      body.setVelocityX(-this.speed)
-    } else if (this.wasdKeys.D.isDown || this.cursors.right.isDown) {
-      body.setVelocityX(this.speed)
+    // If slipping, force slip velocity and skip input movement for the duration.
+    if (now < this.slipUntil && this.slipVel) {
+      body.setVelocity(this.slipVel.x, this.slipVel.y)
+    } else {
+      // normal movement path
+      body.setVelocity(0)
+
+      if (this.wasdKeys.A.isDown || this.cursors.left.isDown) {
+        body.setVelocityX(-this.speed)
+      } else if (this.wasdKeys.D.isDown || this.cursors.right.isDown) {
+        body.setVelocityX(this.speed)
+      }
+
+      if (this.wasdKeys.W.isDown || this.cursors.up.isDown) {
+        body.setVelocityY(-this.speed)
+      } else if (this.wasdKeys.S.isDown || this.cursors.down.isDown) {
+        body.setVelocityY(this.speed)
+      }
+
+      if (body.velocity.lengthSq() > 0) {
+        body.velocity.normalize().scale(this.speed)
+      }
+
+      // clear slip state if any
+      this.slipUntil = 0
+      this.slipVel = null
     }
 
-    if (this.wasdKeys.W.isDown || this.cursors.up.isDown) {
-      body.setVelocityY(-this.speed)
-    } else if (this.wasdKeys.S.isDown || this.cursors.down.isDown) {
-      body.setVelocityY(this.speed)
-    }
+    if (this.bombIcon) this.bombIcon.setPosition(this.x, this.y - 60)
 
-    body.velocity.normalize().scale(this.speed)
+    if (this.aimingGrenade && this.bombIcon) {
+      this.bombIcon.setPosition(this.x, this.y - 60)
+    }
 
     const activeGun = this.getActiveGun()
     if (activeGun) {
@@ -169,6 +208,20 @@ export default class Player extends Phaser.GameObjects.Container {
   }
 
   private handleMouseDown(pointer: Phaser.Input.Pointer): void {
+    // ignore the down that came from clicking USE
+    if (this.scene.time.now < this.armBlockUntil) return
+
+    if (this.grenadeArmed && !this.aimingGrenade) {
+      this.aimingGrenade = true
+      const origin = new Phaser.Math.Vector2(this.x, this.y)
+      const to = new Phaser.Math.Vector2(pointer.worldX, pointer.worldY)
+      const vel = this.getAimVelocity(origin, to)
+      this.renderAimDots(origin, vel)
+      return
+    }
+
+    if (this.aimingGrenade) return
+
     const activeGun = this.getActiveGun()
     if (!activeGun) return
     if (activeGun instanceof Ak47) {
@@ -179,6 +232,20 @@ export default class Player extends Phaser.GameObjects.Container {
   }
 
   private handleMouseUp(pointer: Phaser.Input.Pointer): void {
+    // ignore the up that came from clicking USE
+    if (this.scene.time.now < this.armBlockUntil) return
+
+    if (this.aimingGrenade) {
+      const origin = new Phaser.Math.Vector2(this.x, this.y)
+      const to = new Phaser.Math.Vector2(pointer.worldX, pointer.worldY)
+      const vel = this.getAimVelocity(origin, to)
+      this.throwGrenade(vel)
+      this.grenadeArmed = false
+      return
+    }
+
+    if (this.grenadeArmed) return
+
     const activeGun = this.getActiveGun()
     if (activeGun instanceof Ak47) {
       activeGun.stopFiring()
@@ -437,21 +504,7 @@ export default class Player extends Phaser.GameObjects.Container {
   }
 
   public addItemToBag(itemSpriteKey: string): void {
-    let spriteKey = itemSpriteKey
-
-    switch (itemSpriteKey) {
-      case "ouchwrap":
-        spriteKey = "ouchwrap-no-glow"
-        break
-      case "healbox":
-        spriteKey = "healbox-no-glow"
-        break
-      case "boomnut":
-        spriteKey = "boomnut-no-glow"
-        break
-    }
-
-    const item = this.scene.add.sprite(0, 0, spriteKey)
+    const item = this.scene.add.sprite(0, 0, itemSpriteKey)
     this.bag.add(item)
   }
 
@@ -463,7 +516,7 @@ export default class Player extends Phaser.GameObjects.Container {
 
   public handleFasterBoi() {
     // increase speed for 5 seconds
-    this.speed = this.defaultSpeed * 2
+    this.speed = this.defaultSpeed * 1.8
     this.scene.time.delayedCall(5000, () => {
       this.speed = this.defaultSpeed
     })
@@ -484,19 +537,26 @@ export default class Player extends Phaser.GameObjects.Container {
     }
 
     if (nearestEnemy) {
-      console.log(nearestEnemy)
-      // push the player towards the enemy for 4 seconds
       const angle = Phaser.Math.Angle.Between(
         this.x,
         this.y,
         nearestEnemy.x,
         nearestEnemy.y
       )
-      const pushSpeed = 300
-      const body = this.body as Phaser.Physics.Arcade.Body
-      body.setVelocity(Math.cos(angle) * pushSpeed, Math.sin(angle) * pushSpeed)
+      const pushSpeed = 600
+      const vx = Math.cos(angle) * pushSpeed
+      const vy = Math.sin(angle) * pushSpeed
+
+      // Lock slip for 4 seconds; update() will enforce this velocity every frame.
+      this.slipUntil = this.scene.time.now + 4000
+      this.slipVel = new Phaser.Math.Vector2(vx, vy)
+
+      // Optional safety stop after 4s
       this.scene.time.delayedCall(4000, () => {
-        body.setVelocity(0)
+        const body = this.body as Phaser.Physics.Arcade.Body
+        if (body) body.setVelocity(0)
+        this.slipUntil = 0
+        this.slipVel = null
       })
     }
   }
@@ -510,5 +570,72 @@ export default class Player extends Phaser.GameObjects.Container {
 
   public toggleBag(): void {
     this.bag.visible = !this.bag.visible
+  }
+
+  private getAimVelocity(from: Phaser.Math.Vector2, to: Phaser.Math.Vector2) {
+    // drag opposite direction → throw farther
+    const dir = new Phaser.Math.Vector2(from.x - to.x, from.y - to.y)
+    const len = Phaser.Math.Clamp(dir.length(), 0, 320) // max drag
+    dir.normalize().scale(len * 6) // tune throw power
+    return dir // pixels/sec
+  }
+
+  private renderAimDots(origin: Phaser.Math.Vector2, vel: Phaser.Math.Vector2) {
+    // clear old
+    for (const d of this.aimDots) d.destroy()
+    this.aimDots.length = 0
+
+    const steps = 18
+    const dt = 0.05 // preview step (s) – straight line feel (top-down)
+    for (let i = 1; i <= steps; i++) {
+      const t = i * dt
+      const px = origin.x + vel.x * t
+      const py = origin.y + vel.y * t
+      const dot = this.scene.add.circle(
+        px,
+        py,
+        3,
+        0xffffff,
+        Phaser.Math.Linear(0.9, 0.2, i / steps)
+      )
+      dot.setDepth(9999).setScrollFactor(1)
+      this.aimDots.push(dot)
+    }
+  }
+
+  private clearAimDots() {
+    for (const d of this.aimDots) d.destroy()
+    this.aimDots.length = 0
+  }
+
+  public startGrenadeAim() {
+    if (!this.isAlive) return
+
+    this.grenadeArmed = true
+    this.aimingGrenade = false
+
+    // block current click cycle (the USE click)
+    this.armBlockUntil = this.scene.time.now + 150
+
+    // show icon
+    this.bombIcon?.destroy()
+    this.bombIcon = this.scene.add
+      .image(this.x, this.y - 60, "boomnut-no-glow")
+      .setScale(0.6)
+      .setDepth(9999)
+
+    // clear any old dots
+    this.clearAimDots()
+  }
+
+  private throwGrenade(vel: Phaser.Math.Vector2) {
+    // Lazy import to avoid circular deps—adjust path if needed
+    const Grenade = require("./Grenade").default as any
+    new Grenade(this.scene as any, this.x, this.y, vel)
+
+    this.aimingGrenade = false
+    this.clearAimDots()
+    this.bombIcon?.destroy()
+    this.bombIcon = undefined
   }
 }

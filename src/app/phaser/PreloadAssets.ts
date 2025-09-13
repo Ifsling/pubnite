@@ -45,16 +45,8 @@ export function PreloadAssets(scene: GameScene) {
   scene.load.image("faster-boi", "/images/collectables/faster-boi.png")
   scene.load.image("sliptrap", "/images/collectables/sliptrap.png")
   scene.load.image(
-    "slowmo-injection", 
+    "slowmo-injection",
     "/images/collectables/slowmo-injection.png"
-  )
-  scene.load.image(
-    "ouchwrap-no-glow",
-    "/images/collectables/without-glow/ouchwrap.png"
-  )
-  scene.load.image(
-    "healbox-no-glow",
-    "/images/collectables/without-glow/healbox.png"
   )
   scene.load.image(
     "boomnut-no-glow",

@@ -1,11 +1,16 @@
 export const MAP_SCALE_FACTOR = 1.4
-export const COLLECTABLE_SPAWN_CHANCE = 0.1
+export const COLLECTABLE_SPAWN_CHANCE = 0.7
 
 export const ammoAmounts: { [key: string]: number } = {
   pistol: 15,
   ak47: 30,
   shotgun: 10,
   sniper: 5,
+}
+
+export const HEALERS_HEAL_AMOUNT= {
+  "ouchwrap": 25,
+  "healbox": 100,
 }
 
 export type PickupType =
