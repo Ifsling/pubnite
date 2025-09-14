@@ -38,7 +38,13 @@ export default class Enemy extends Phaser.GameObjects.Container {
   private healthBarHeight: number = 6
   private healthBarOffsetY: number = -50
 
-  constructor(scene: GameScene, x: number, y: number, player: Player) {
+  constructor(
+    scene: GameScene,
+    x: number,
+    y: number,
+    player: Player,
+    collisionItems?: (Phaser.Tilemaps.TilemapLayer | null)[]
+  ) {
     super(scene, x, y)
     this.player = player
 
@@ -80,6 +86,15 @@ export default class Enemy extends Phaser.GameObjects.Container {
     this.healthBarBg = scene.add.graphics()
     this.healthBar = scene.add.graphics()
     this.drawHealthBar()
+
+    // Setting up collisions
+    if (collisionItems) {
+      collisionItems.forEach((item) => {
+        if (item) {
+          const collider = scene.physics.add.collider(this, item)
+        }
+      })
+    }
 
     scene.enemies.push(this)
   }

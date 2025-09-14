@@ -83,7 +83,13 @@ export default class GameScene extends Phaser.Scene {
 
     for (let i = 0; i < NO_OF_ENEMIES; i++) {
       getOneSpawnLocationWithinMap().then((loc) => {
-        new Enemy(this, loc.x, loc.y, this.player)
+        new Enemy(this, loc.x, loc.y, this.player, [
+          trees,
+          water,
+          houses,
+          bush,
+          stones,
+        ])
       })
     }
 
