@@ -13,7 +13,9 @@ import SpreadHouseEntries from "../components/SpreadHouseEntries"
 import {
   COLLECTABLE_SPAWN_CHANCE,
   COLLECTABLES,
+  houseEntryPoints,
   MAP_SCALE_FACTOR,
+  NO_OF_ENEMIES,
 } from "../Constants"
 import { AddPhysicsItem, handleCollisions } from "../HelperFunctions"
 import { createMap, spawnableLocations } from "../map/Map"
@@ -77,14 +79,20 @@ export default class GameScene extends Phaser.Scene {
     this.playerCountUI = new PlayerCountUI(this)
     this.roomManager = new RoomManager(this)
 
-    // ---------- DELETE THIS -------------
+    // ---------- Spreading Enemies -------------
 
-    new Enemy(this, 1500, 2500, this.player)
+    for (let i = 0; i < NO_OF_ENEMIES; i++) {
+      getOneSpawnLocationWithinMap().then((loc) => {
+        new Enemy(this, loc.x, loc.y, this.player)
+      })
+    }
 
     // -----------------------------------
 
     spawnableLocations().then((locations) => {
       locations.forEach((loc) => {
+        if (houseEntryPoints.includes([loc.x, loc.y])) return
+        // -------- Spreading Collectables --------
         let randVal = Math.random()
 
         var randItem = COLLECTABLES[(Math.random() * COLLECTABLES.length) | 0]

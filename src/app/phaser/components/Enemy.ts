@@ -8,6 +8,13 @@ import Shotgun from "./guns/Shotgun"
 import Sniper from "./guns/Sniper"
 import type Player from "./Player"
 
+// ==== TUNABLE CONSTANTS (top of file) ====
+const FOLLOW_DISTANCE = 2000 // start chasing if player is within this distance
+const SHOOT_DISTANCE = 900 // start shooting if player is within this distance
+const CHASE_SPEED = 140 // enemy movement speed while chasing
+const FIRE_COOLDOWN_MS = 300 // min ms between shots (all guns)
+// =========================================
+
 export default class Enemy extends Phaser.GameObjects.Container {
   private sprite: Phaser.GameObjects.Sprite
   private gun: Gun
@@ -24,7 +31,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
   public scene: GameScene
   public shooterType: "player" | "enemy"
 
-  // 🔥 Health bar components
+  // Health bar components
   private healthBarBg: Phaser.GameObjects.Graphics
   private healthBar: Phaser.GameObjects.Graphics
   private healthBarWidth: number = 40
@@ -69,7 +76,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
     GameScene.totalPlayers += 1
 
-    // 🔥 Create health bar
+    // Health bar
     this.healthBarBg = scene.add.graphics()
     this.healthBar = scene.add.graphics()
     this.drawHealthBar()
@@ -96,7 +103,6 @@ export default class Enemy extends Phaser.GameObjects.Container {
     this.hasHelmet = true
     this.helmetHealth = 50
   }
-
   private equipVest() {
     this.hasVest = true
     this.vestHealth = 60
@@ -115,30 +121,27 @@ export default class Enemy extends Phaser.GameObjects.Container {
       0,
       1
     )
-
     this.healthBarBg.clear()
     this.healthBar.clear()
-
-    // Background (grey or black)
-    this.healthBarBg.fillStyle(0x000000, 1)
-    this.healthBarBg.fillRect(
-      this.x - this.healthBarWidth / 2,
-      this.y + this.healthBarOffsetY,
-      this.healthBarWidth,
-      this.healthBarHeight
-    )
-
-    // Health (red)
-    this.healthBar.fillStyle(0xff0000, 1)
-    this.healthBar.fillRect(
-      this.x - this.healthBarWidth / 2,
-      this.y + this.healthBarOffsetY,
-      this.healthBarWidth * healthPercent,
-      this.healthBarHeight
-    )
+    this.healthBarBg
+      .fillStyle(0x000000, 1)
+      .fillRect(
+        this.x - this.healthBarWidth / 2,
+        this.y + this.healthBarOffsetY,
+        this.healthBarWidth,
+        this.healthBarHeight
+      )
+    this.healthBar
+      .fillStyle(0xff0000, 1)
+      .fillRect(
+        this.x - this.healthBarWidth / 2,
+        this.y + this.healthBarOffsetY,
+        this.healthBarWidth * healthPercent,
+        this.healthBarHeight
+      )
   }
 
-  public update(time: number, delta: number) {
+  public update(time: number, _delta: number) {
     const body = this.body as Phaser.Physics.Arcade.Body
 
     const dx = this.player.x - this.x
@@ -150,34 +153,41 @@ export default class Enemy extends Phaser.GameObjects.Container {
       this.player.y
     )
 
-    if (distance < 5000 && distance > 2500) {
+    // --- Movement ---
+    if (distance <= FOLLOW_DISTANCE && distance > SHOOT_DISTANCE) {
       const angle = Math.atan2(dy, dx)
-      const speed = 100
-      body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed)
+      body.setVelocity(
+        Math.cos(angle) * CHASE_SPEED,
+        Math.sin(angle) * CHASE_SPEED
+      )
     } else {
       body.setVelocity(0)
     }
 
-    if (distance <= 2500 && time > this.lastShotTime + 300) {
-      if (this.gun.ammo <= 0) {
-        // Auto reload
-        this.reload(this.enemyChosenGun)
-      }
+    // --- Shooting ---
+    const inShootRange = distance <= SHOOT_DISTANCE
+    if (!inShootRange && this.enemyChosenGun === "ak47") {
+      // stop autofire once out of range
+      ;(this.gun as Ak47).stopFiring?.()
+    }
+
+    if (inShootRange && time > this.lastShotTime + FIRE_COOLDOWN_MS) {
+      if (this.gun.ammo <= 0) this.reload(this.enemyChosenGun)
 
       if (this.enemyChosenGun === "ak47") {
         ;(this.gun as Ak47).startFiring()
       }
 
-      // if (this.player.isAlive) {
-      //   this.gun.tryShoot(this, {
-      //     worldX: this.player.x,
-      //     worldY: this.player.y,
-      //   } as Phaser.Input.Pointer)
-
-      //   this.lastShotTime = time
-      // }
+      if (this.player.isAlive) {
+        this.gun.tryShoot(this, {
+          worldX: this.player.x,
+          worldY: this.player.y,
+        } as Phaser.Input.Pointer)
+        this.lastShotTime = time
+      }
     }
 
+    // Gun orientation
     this.gun.x = 0
     this.gun.y = 0
     this.gun.rotation = Phaser.Math.Angle.Between(
@@ -188,14 +198,12 @@ export default class Enemy extends Phaser.GameObjects.Container {
     )
     this.gun.update()
 
-    // 🔥 Update health bar position
+    // Health bar position
     this.drawHealthBar()
   }
 
   private reload(gunType: string | null) {
-    // wait for reload amount of time
     let reloadTime
-
     switch (gunType) {
       case "pistol":
         reloadTime = GUN_RELOAD_TIME.pistol
@@ -212,7 +220,6 @@ export default class Enemy extends Phaser.GameObjects.Container {
       default:
         reloadTime = GUN_RELOAD_TIME.shotgun
     }
-
     this.scene.time.delayedCall(reloadTime, () => {
       const ammoToAdd = ammoAmounts[gunType || "pistol"] || 10
       this.gun.addAmmo(ammoToAdd)
@@ -236,11 +243,8 @@ export default class Enemy extends Phaser.GameObjects.Container {
     if (this.currentHealth <= 0) {
       this.scene.events.emit("enemy-killed", this)
       this.scene.enemies = this.scene.enemies.filter((e) => e !== this)
-
-      // Remove health bars
       this.healthBar.destroy()
       this.healthBarBg.destroy()
-
       this.destroy()
     } else {
       this.drawHealthBar()
@@ -265,7 +269,6 @@ export default class Enemy extends Phaser.GameObjects.Container {
   ): void {
     const bullet = obj2 as Phaser.Physics.Arcade.Sprite
     const enemy = obj1 as Enemy
-
     const damage = (bullet as any).damage || 10
     enemy.takeDamage(damage)
     bullet.destroy()
