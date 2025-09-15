@@ -79,7 +79,7 @@ export default abstract class Gun extends Phaser.GameObjects.Sprite {
     )
     ;(bullet as any).damage = this.bulletType.damage
 
-    this.scene.time.delayedCall(3000, () => {
+    this.scene.time.delayedCall(9000, () => {
       if (bullet && bullet.active) bullet.destroy()
     })
 

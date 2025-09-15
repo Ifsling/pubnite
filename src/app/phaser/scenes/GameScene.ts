@@ -1,8 +1,10 @@
 import { getOneSpawnLocationWithinMap } from "@/src/app/utils"
+import EasyStar from "easystarjs"
 import * as Phaser from "phaser"
 import BagUI from "../components/BagUi"
 import BulletCountUI from "../components/BulletCountUi"
 import DeathOverlay from "../components/DeathOverlay"
+import { SetupEasyStar } from "../components/easystar/EasyStarSetup"
 import Enemy from "../components/Enemy"
 import GunUI from "../components/GunUi"
 import HealthUI from "../components/HealthUi"
@@ -22,6 +24,8 @@ import { createMap, spawnableLocations } from "../map/Map"
 import { PreloadAssets } from "../PreloadAssets"
 
 export default class GameScene extends Phaser.Scene {
+  easystar!: EasyStar.js
+  mapGrid!: number[][]
   map!: Phaser.Tilemaps.Tilemap
   player!: Player
   bagUI!: BagUI
@@ -66,6 +70,7 @@ export default class GameScene extends Phaser.Scene {
       stones,
     } = createMap(this)
     this.map = map
+    this.mapGrid = SetupEasyStar(this)
 
     const location = getOneSpawnLocationWithinMap()
 
