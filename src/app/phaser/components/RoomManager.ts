@@ -44,8 +44,16 @@ export default class RoomManager {
   update() {
     if (!this.doorLayer || !this.eKey) return
 
-    // Cheap per-frame test: is player's body overlapping any door tile?
-    const atDoor = this.scene.physics.overlap(this.scene.player, this.doorLayer)
+    const body = this.scene.player.body as Phaser.Physics.Arcade.Body
+    const tiles = this.doorLayer.getTilesWithinWorldXY(
+      body.x,
+      body.y,
+      body.width,
+      body.height
+    )
+
+    const atDoor = tiles.some((tile) => tile.index !== -1)
+
     if (atDoor && Phaser.Input.Keyboard.JustDown(this.eKey)) {
       const exit =
         this.entryPointOutside ??
