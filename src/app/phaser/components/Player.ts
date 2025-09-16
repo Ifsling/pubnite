@@ -41,7 +41,7 @@ export default class Player extends Phaser.GameObjects.Container {
   private defaultSpeed: number = 500
   private speed: number = 500
   private maxHealth: number = 100
-  private currentHealth: number = 20
+  private currentHealth: number = 100
   private hasHelmet: boolean = false
   private hasVest: boolean = false
   private helmetHealth: number = 0

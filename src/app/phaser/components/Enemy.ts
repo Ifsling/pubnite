@@ -10,21 +10,29 @@ import Shotgun from "./guns/Shotgun"
 import Sniper from "./guns/Sniper"
 import Player from "./Player"
 
-// ==== TUNABLE CONSTANTS (top of file) ====
+// ==== TUNABLE CONSTANTS ====
 // vision / combat
 const FOLLOW_DISTANCE = 2000 // start chasing if target is within this distance (world units)
 const SHOOT_DISTANCE = 900 // shoot if within this distance (world units)
-const CHASE_SPEED = 140 // movement speed along path (px/s)
+const CHASE_SPEED = 300 // movement speed along path (px/s)
 const FIRE_COOLDOWN_MS = 300 // min ms between shots for single-fire guns
 
+// standoff behavior
+const STANDOFF_DIST = 300 // desired distance to hold from target
+const STANDOFF_HYST = 40 // hysteresis band to prevent jitter
+
 // pathing
-const PATH_RECALC_MS = 250 // how often we recalc a path while moving toward a goal
+const PATH_RECALC_MS = 250 // how often to recalc a path while moving toward a goal
 const WAYPOINT_EPS = 18 // how close to a waypoint to pop it (world px)
+
+// crowding (soft separation)
+const SEPARATION_RADIUS = 120 // start repelling other enemies inside this
+const SEPARATION_FORCE = 200 // push strength (px/s added to velocity)
 
 // regen
 const REGEN_PER_SEC = 6 // HP per second when out of combat
 const REGEN_DELAY_MS = 3000 // start regenerating after this long without damage
-// =========================================
+// ===========================
 
 type Target = Player | Enemy | null
 
@@ -175,8 +183,15 @@ export default class Enemy extends Phaser.GameObjects.Container {
       )
   }
 
+  // --- Walkability hooks (defined on your scene)
   private isWalkableTile(tx: number, ty: number) {
     return (this.scene as any).isWalkableTile(tx, ty) as boolean
+  }
+  private worldToTile(wx: number, wy: number) {
+    return (this.scene as any).worldToTile(wx, wy) as { x: number; y: number }
+  }
+  private tileToWorld(tx: number, ty: number) {
+    return (this.scene as any).tileToWorld(tx, ty) as { x: number; y: number }
   }
 
   private findNearestWalkable(tx: number, ty: number, maxR = 6) {
@@ -196,7 +211,6 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
   // --- Targeting
   private acquireTarget(): Target {
-    // Consider player + all *other* enemies
     const candidates: Target[] = [
       this.scene.player,
       ...this.scene.enemies.filter((e) => e !== this),
@@ -207,7 +221,6 @@ export default class Enemy extends Phaser.GameObjects.Container {
     for (const c of candidates) {
       if (!c || (!(c as any).isAlive && c instanceof Player)) continue
       if (c instanceof Enemy && !c.active) continue
-
       const d = Phaser.Math.Distance.Between(this.x, this.y, c.x, c.y)
       if (d < bestDist) {
         bestDist = d
@@ -215,7 +228,6 @@ export default class Enemy extends Phaser.GameObjects.Container {
       }
     }
 
-    // Only aggro inside FOLLOW_DISTANCE
     return best &&
       Phaser.Math.Distance.Between(this.x, this.y, best.x, best.y) <=
         FOLLOW_DISTANCE
@@ -224,16 +236,9 @@ export default class Enemy extends Phaser.GameObjects.Container {
   }
 
   // --- Pathing
-  private worldToTile(wx: number, wy: number) {
-    return (this.scene as any).worldToTile(wx, wy) as { x: number; y: number }
-  }
-  private tileToWorld(tx: number, ty: number) {
-    return (this.scene as any).tileToWorld(tx, ty) as { x: number; y: number }
-  }
-
   private async computePathTo(tileX: number, tileY: number) {
     const sTile = this.worldToTile(this.x, this.y)
-    const goal = this.findNearestWalkable(tileX, tileY) // <-- snap target
+    const goal = this.findNearestWalkable(tileX, tileY) // snap to walkable
     if (!goal) {
       this.path = []
       return
@@ -250,7 +255,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
     this.path = await findPathTiles(sTile.x, sTile.y, goal.x, goal.y)
   }
 
-  private followPath(delta: number) {
+  private followPath(_delta: number) {
     const body = this.body as Phaser.Physics.Arcade.Body
     if (!this.path || this.path.length < 2) {
       body.setVelocity(0)
@@ -265,12 +270,10 @@ export default class Enemy extends Phaser.GameObjects.Container {
     const dist = Math.hypot(dx, dy)
 
     if (dist < WAYPOINT_EPS) {
-      // Pop reached waypoint
       this.path.shift()
       return
     }
 
-    // Move toward waypoint
     const ang = Math.atan2(dy, dx)
     body.setVelocity(Math.cos(ang) * CHASE_SPEED, Math.sin(ang) * CHASE_SPEED)
   }
@@ -300,6 +303,46 @@ export default class Enemy extends Phaser.GameObjects.Container {
     this.path = []
   }
 
+  // --- Standoff + separation helpers
+  private standoffPointFromTarget(tx: number, ty: number) {
+    // Point on the line from target -> enemy at STANDOFF_DIST from target
+    const dx = this.x - tx
+    const dy = this.y - ty
+    const len = Math.hypot(dx, dy) || 1
+    const nx = dx / len
+    const ny = dy / len
+    return { x: tx + nx * STANDOFF_DIST, y: ty + ny * STANDOFF_DIST }
+  }
+
+  private applySeparation() {
+    const body = this.body as Phaser.Physics.Arcade.Body
+    let rx = 0,
+      ry = 0,
+      cnt = 0
+
+    for (const e of this.scene.enemies) {
+      if (e === this || !e.active) continue
+      const dx = this.x - e.x
+      const dy = this.y - e.y
+      const d = Math.hypot(dx, dy)
+      if (d > 0 && d < SEPARATION_RADIUS) {
+        const strength = (SEPARATION_RADIUS - d) / SEPARATION_RADIUS
+        rx += (dx / d) * strength
+        ry += (dy / d) * strength
+        cnt++
+      }
+    }
+
+    if (cnt > 0) {
+      const len = Math.hypot(rx, ry)
+      if (len > 0) {
+        rx = (rx / len) * SEPARATION_FORCE
+        ry = (ry / len) * SEPARATION_FORCE
+        body.setVelocity(body.velocity.x + rx, body.velocity.y + ry)
+      }
+    }
+  }
+
   // --- Update
   public update(time: number, delta: number) {
     const body = this.body as Phaser.Physics.Arcade.Body
@@ -307,53 +350,76 @@ export default class Enemy extends Phaser.GameObjects.Container {
     // 1) Acquire/refresh target
     const newTarget = this.acquireTarget()
     if (newTarget !== this.target) {
-      // stop ak47 when switching targets / losing target
       if (this.enemyChosenGun === "ak47") (this.gun as Ak47).stopFiring?.()
       this.target = newTarget
-      this.goalTile = null // force re-path to new goal
+      this.goalTile = null
       this.path = []
     }
 
-    // 2) Decide goal: target (aggro) vs wander
+    // 2) Decide goal: target (aggro) vs wander with standoff
     let goalWorld: { x: number; y: number } | null = null
+
     if (this.target) {
-      goalWorld = { x: this.target.x, y: this.target.y }
+      const dist = Phaser.Math.Distance.Between(
+        this.x,
+        this.y,
+        this.target.x,
+        this.target.y
+      )
+
+      const withinShoot = dist <= SHOOT_DISTANCE
+      const withinStandoffBand =
+        dist >= STANDOFF_DIST - STANDOFF_HYST &&
+        dist <= STANDOFF_DIST + STANDOFF_HYST
+
+      if (!withinShoot) {
+        // too far → close to standoff ring
+        goalWorld = this.standoffPointFromTarget(this.target.x, this.target.y)
+      } else if (!withinStandoffBand) {
+        // in shoot range but outside the hold band → move to ring
+        goalWorld = this.standoffPointFromTarget(this.target.x, this.target.y)
+      } else {
+        // inside hold band → stand still
+        goalWorld = null
+      }
     } else {
       // no target → wander
       if (!this.wanderGoalTile) {
-        // pick if none yet
         this.pickNewWanderGoal()
       } else {
-        goalWorld = this.tileToWorld(
-          this.wanderGoalTile.x,
-          this.wanderGoalTile.y
-        )
-        // If at wander goal, pick a new one
+        const w = this.tileToWorld(this.wanderGoalTile.x, this.wanderGoalTile.y)
         if (
-          goalWorld &&
-          Phaser.Math.Distance.Between(
-            this.x,
-            this.y,
-            goalWorld.x,
-            goalWorld.y
-          ) <
-            WAYPOINT_EPS * 2
+          Phaser.Math.Distance.Between(this.x, this.y, w.x, w.y) <
+          WAYPOINT_EPS * 2
         ) {
           this.pickNewWanderGoal()
-          goalWorld = null
+        } else {
+          goalWorld = w
         }
       }
     }
 
-    // 3) Movement toward goal (walk only on walkable via path)
+    // 3) Movement toward goal (pathfind), or stop if holding
     if (goalWorld) {
       this.ensurePathToWorld(goalWorld.x, goalWorld.y, time)
       this.followPath(delta)
+
+      // soft separation after pathing to reduce clumping
+      this.applySeparation()
+
+      // clamp velocity
+      const vlen = Math.hypot(body.velocity.x, body.velocity.y)
+      if (vlen > CHASE_SPEED) {
+        body.setVelocity(
+          (body.velocity.x / vlen) * CHASE_SPEED,
+          (body.velocity.y / vlen) * CHASE_SPEED
+        )
+      }
     } else {
       body.setVelocity(0)
     }
 
-    // 4) Shooting logic (works for Player or Enemy)
+    // 4) Shooting logic
     if (this.target) {
       const dist = Phaser.Math.Distance.Between(
         this.x,
@@ -451,7 +517,6 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
     this.currentHealth -= amount
     if (this.currentHealth <= 0) {
-      // notify counts, stop firing, cleanup
       if (this.enemyChosenGun === "ak47") (this.gun as Ak47).stopFiring?.()
       this.scene.events.emit("enemy-killed", this)
       this.scene.enemies = this.scene.enemies.filter((e) => e !== this)

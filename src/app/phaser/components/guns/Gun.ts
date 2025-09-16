@@ -61,9 +61,15 @@ export default abstract class Gun extends Phaser.GameObjects.Sprite {
     shooter: Player | Enemy,
     angle: number
   ): Phaser.Physics.Arcade.Sprite {
-    const worldPos = this.getWorldTransformMatrix().transformPoint(0, 0)
+    // pick the right group
+    const isPlayer = (shooter as any).shooterType === "player"
+    const group = isPlayer
+      ? this.gameScene.playerBullets
+      : this.gameScene.enemyBullets
 
-    const bullet = this.gameScene.playerBullets.create(
+    // spawn at gun's world position
+    const worldPos = this.getWorldTransformMatrix().transformPoint(0, 0)
+    const bullet = group.create(
       worldPos.x,
       worldPos.y,
       this.bulletType.sprite
@@ -75,43 +81,65 @@ export default abstract class Gun extends Phaser.GameObjects.Sprite {
     this.scene.physics.velocityFromRotation(
       angle,
       this.bulletType.speed,
-      bullet!.body!.velocity
+      bullet.body!.velocity
     )
-    ;(bullet as any).damage = this.bulletType.damage
 
+    // tag bullet
+    ;(bullet as any).damage = this.bulletType.damage
+    ;(bullet as any).shooter = shooter
+
+    // auto-despawn
     this.scene.time.delayedCall(9000, () => {
       if (bullet && bullet.active) bullet.destroy()
     })
 
-    // Setting collision with enemies
+    // --- Collisions / damage ---
+    if (isPlayer) {
+      // Player bullet -> damage every enemy
+      this.gameScene.enemies.forEach((enemy) => {
+        this.scene.physics.add.overlap(
+          bullet,
+          enemy,
+          (_b, e) => {
+            const dmg = (bullet as any).damage || 10
+            ;(e as any).takeDamage(dmg)
+            bullet.destroy()
+          },
+          undefined,
+          this.scene
+        )
+      })
+    } else {
+      // Enemy bullet -> damage PLAYER
+      this.scene.physics.add.overlap(
+        bullet,
+        this.gameScene.player,
+        (b, p) => {
+          const dmg = (b as any).damage || 10
+          ;(p as any).takeDamage(dmg)
+          ;(b as Phaser.Physics.Arcade.Sprite).destroy()
+        },
+        undefined,
+        this.scene
+      )
 
-    // if ((shooter as any).shooterType === "player") {
-    //   this.gameScene.enemies.forEach((enemy) => {
-    //     this.scene.physics.add.overlap(
-    //       this.gameScene.playerBullets,
-    //       enemy,
-    //       enemy.handleBulletHitEnemy,
-    //       undefined,
-    //       enemy
-    //     )
-    //   })
-    // } else if ((shooter as any).shooterType === "enemy") {
-    //   this.scene.physics.add.overlap(
-    //     bullet,
-    //     this.gameScene.player,
-    //     (obj1, obj2) => {
-    //       const bullet = obj1 as Phaser.Physics.Arcade.Sprite
-    //       const player = obj2 as Player
-
-    //       console.log(obj1, obj2)
-
-    //       player.takeDamage((bullet as any).damage || 10)
-    //       bullet.destroy()
-    //     },
-    //     undefined,
-    //     this.scene
-    //   )
-    // }
+      // Enemy bullet -> damage OTHER ENEMIES (no self-hit)
+      const shooterEnemy = shooter as Enemy
+      this.gameScene.enemies.forEach((enemy) => {
+        if (enemy === shooterEnemy) return
+        this.scene.physics.add.overlap(
+          bullet,
+          enemy,
+          (b, e) => {
+            const dmg = (b as any).damage || 10
+            ;(e as any).takeDamage(dmg)
+            ;(b as Phaser.Physics.Arcade.Sprite).destroy()
+          },
+          undefined,
+          this.scene
+        )
+      })
+    }
 
     return bullet
   }
