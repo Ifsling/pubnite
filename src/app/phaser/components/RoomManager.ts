@@ -16,6 +16,8 @@ export default class RoomManager {
   private static readonly DOOR_ALPHA_MAX = 0.85
   private static readonly DOOR_TWEEN_MS = 650
 
+  private prevWorldBounds?: Phaser.Geom.Rectangle
+
   private map?: Phaser.Tilemaps.Tilemap
   private bgLayer?: Phaser.Tilemaps.TilemapLayer
   private wallsLayer?: Phaser.Tilemaps.TilemapLayer
@@ -39,7 +41,6 @@ export default class RoomManager {
     return this.active
   }
 
-  // call from GameScene.update()
   update() {
     if (!this.doorLayer || !this.eKey) return
 
@@ -58,6 +59,13 @@ export default class RoomManager {
     this.active = true
 
     this.entryPointOutside = entryPointOutside
+    const b = this.scene.physics.world.bounds
+    this.prevWorldBounds = new Phaser.Geom.Rectangle(
+      b.x,
+      b.y,
+      b.width,
+      b.height
+    )
 
     // 1) decoy outside (bots can still see/shoot it)
     this.dummyPlayer = this.scene.add.sprite(
@@ -111,6 +119,9 @@ export default class RoomManager {
     const mapW = this.map.widthInPixels
     const mapH = this.map.heightInPixels
     const aspect = mapW / mapH
+
+    this.scene.physics.world.setBounds(0, 0, mapW, mapH)
+    this.scene.physics.world.setBoundsCollision(true, true, true, true)
 
     let viewW = Math.round(sw * RoomManager.ROOM_VIEW_PCT)
     let viewH = Math.round(viewW / aspect)
@@ -227,6 +238,12 @@ export default class RoomManager {
     // move player back outside
     this.scene.player.setDepth(10)
     this.scene.player.setPosition(exitPointOutside.x, exitPointOutside.y)
+
+    if (this.prevWorldBounds) {
+      const b = this.prevWorldBounds
+      this.scene.physics.world.setBounds(b.x, b.y, b.width, b.height)
+      this.prevWorldBounds = undefined
+    }
 
     this.active = false
   }
