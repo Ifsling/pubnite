@@ -11,9 +11,14 @@ export function AddPhysicsItem(
   isCollectable: boolean = false,
   isCollidable: boolean = true,
   isImmovable: boolean = true,
-  pickupType: PickupType | null = null
+  pickupType: PickupType | null = null,
+  size: number = 1
 ) {
-  const item = scene.add.sprite(x, y, itemCode).setOrigin(0.5, 0.5)
+  const item = scene.add
+    .sprite(x, y, itemCode)
+    .setOrigin(0.5, 0.5)
+    .setScale(size)
+
   scene.physics.add.existing(item)
   const body = item.body as Phaser.Physics.Arcade.Body
 

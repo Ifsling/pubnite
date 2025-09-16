@@ -1,3 +1,4 @@
+import { AddPhysicsItem } from "../HelperFunctions"
 import GameScene from "../scenes/GameScene"
 
 export default class RoomManager {
@@ -15,6 +16,15 @@ export default class RoomManager {
   private static readonly DOOR_ALPHA_MIN = 0.25
   private static readonly DOOR_ALPHA_MAX = 0.85
   private static readonly DOOR_TWEEN_MS = 650
+
+  private static readonly ROOM_GUN_KEYS = [
+    "pistol",
+    "ak47",
+    "shotgun",
+    "sniper",
+  ]
+  private static readonly ROOM_GUN_SPAWN_CHANCE = 0.01 // 8% per open tile (tune)
+  private static readonly ROOM_GUN_MIN_DIST_FROM_SPAWN = 64 // px, avoid door center
 
   private prevWorldBounds?: Phaser.Geom.Rectangle
 
@@ -112,6 +122,8 @@ export default class RoomManager {
     this.scene.player.setScale(RoomManager.PLAYER_SCALE)
     this.scene.player.setSpeed(250)
     this.roomLayer.add(this.scene.player)
+
+    this.spawnGunsInRoom()
 
     // 5) disable outside colliders
     this.scene.outsideColliders?.forEach((c) => (c.active = false))
@@ -257,6 +269,73 @@ export default class RoomManager {
   }
 
   // ---- helpers ----
+
+  private getOpenTileCenters(): Phaser.Math.Vector2[] {
+    if (!this.map || !this.wallsLayer || !this.doorLayer) return []
+
+    const tw = this.map.tileWidth
+    const th = this.map.tileHeight
+    const open: Phaser.Math.Vector2[] = []
+
+    // iterate all tiles in room extents
+    for (let ty = 0; ty < this.map.height; ty++) {
+      for (let tx = 0; tx < this.map.width; tx++) {
+        const hasWall = this.wallsLayer.hasTileAt(tx, ty)
+        const hasDoor = this.doorLayer.hasTileAt(tx, ty)
+        if (hasWall || hasDoor) continue
+
+        // world center of the tile
+        const wx = this.wallsLayer.tileToWorldX(tx) + tw / 2
+        const wy = this.wallsLayer.tileToWorldY(ty) + th / 2
+        open.push(new Phaser.Math.Vector2(wx, wy))
+      }
+    }
+    return open
+  }
+
+  private spawnGunsInRoom() {
+    if (!this.map || !this.roomLayer || !this.wallsLayer || !this.doorLayer)
+      return
+
+    const openCenters = this.getOpenTileCenters()
+
+    // avoid spawning right on the door spawn tile
+    const spawnAtDoor = this.getDoorSpawnFromTileLayer(this.doorLayer)
+
+    for (const pt of openCenters) {
+      // keep some clear space around the door spawn
+      if (
+        Phaser.Math.Distance.Between(pt.x, pt.y, spawnAtDoor.x, spawnAtDoor.y) <
+        RoomManager.ROOM_GUN_MIN_DIST_FROM_SPAWN
+      ) {
+        continue
+      }
+
+      // roll chance
+      if (Math.random() > RoomManager.ROOM_GUN_SPAWN_CHANCE) continue
+
+      // pick a gun
+      const gunKey =
+        RoomManager.ROOM_GUN_KEYS[
+          (Math.random() * RoomManager.ROOM_GUN_KEYS.length) | 0
+        ]
+
+      // create pickup using your helper; mark as collectable, non-collidable, immovable
+      const item = AddPhysicsItem(
+        this.scene,
+        gunKey,
+        pt.x,
+        pt.y,
+        true,
+        false,
+        true,
+        "gun",
+        0.3
+      )
+      this.roomLayer.add(item) // ensure room cam renders it
+      ;(item as Phaser.GameObjects.Sprite).setDepth(18)
+    }
+  }
 
   // Compute a good spawn point from a tile layer: center of the bounding box of all set tiles.
   private getDoorSpawnFromTileLayer(
