@@ -88,6 +88,11 @@ export default abstract class Gun extends Phaser.GameObjects.Sprite {
     ;(bullet as any).damage = this.bulletType.damage
     ;(bullet as any).shooter = shooter
 
+    if (this.gameScene.roomManager?.isInsideRoom()) {
+      this.gameScene.roomManager.attachToRoom(bullet)
+      bullet.setDepth(35) // above walls (walls are depth 30)
+    }
+
     // auto-despawn
     this.scene.time.delayedCall(9000, () => {
       if (bullet && bullet.active) bullet.destroy()

@@ -80,6 +80,8 @@ export default class RoomManager {
   private roomColliders: Phaser.Physics.Arcade.Collider[] = []
   private dummyPlayer?: Phaser.GameObjects.Sprite
 
+  private decoyCollider?: Phaser.Physics.Arcade.Collider
+
   constructor(scene: GameScene) {
     this.scene = scene
   }
@@ -89,10 +91,13 @@ export default class RoomManager {
   }
 
   update() {
-    if (!this.doorLayer || !this.eKey) return
+    // not in a room? bail
+    if (!this.active || !this.doorLayer || !this.eKey) return
 
-    // Precise overlap: test player's body rect against Door-layer tiles
-    const body = this.scene.player.body as Phaser.Physics.Arcade.Body
+    const player = this.scene.player
+    const body = (player && (player.body as Phaser.Physics.Arcade.Body)) || null
+    if (!body) return // player not ready / died / body disabled
+
     const tiles = this.doorLayer.getTilesWithinWorldXY(
       body.x,
       body.y,
@@ -125,12 +130,9 @@ export default class RoomManager {
     )
 
     // 1) decoy outside (bots can still see/shoot it)
-    this.dummyPlayer = this.scene.add.sprite(
-      entryPointOutside.x,
-      entryPointOutside.y,
-      "player"
-    )
-    this.scene.physics.world.enable(this.dummyPlayer)
+    this.makeDecoyAtDoor(entryPointOutside)
+    this.wireDecoyDamageRelay()
+    this.retargetEnemiesToDecoy()
 
     // 2) tilemap & layers
     this.map = this.scene.make.tilemap({ key: roomKey })
@@ -171,6 +173,28 @@ export default class RoomManager {
     // 7) collide with room walls
     this.roomColliders.push(
       this.scene.physics.add.collider(this.scene.player, this.wallsLayer)
+    )
+    // 7b) bullets vs room walls (destroy on hit while inside the room)
+    this.roomColliders.push(
+      this.scene.physics.add.collider(
+        this.scene.playerBullets,
+        this.wallsLayer as Phaser.Tilemaps.TilemapLayer,
+        (obj1 /* bullet */, _obj2 /* tile */) => {
+          const b = obj1 as Phaser.Physics.Arcade.Sprite
+          if (b.active) b.destroy()
+        }
+      )
+    )
+
+    this.roomColliders.push(
+      this.scene.physics.add.collider(
+        this.scene.enemyBullets,
+        this.wallsLayer as Phaser.Tilemaps.TilemapLayer,
+        (obj1 /* bullet */, _obj2 /* tile */) => {
+          const b = obj1 as Phaser.Physics.Arcade.Sprite
+          if (b.active) b.destroy()
+        }
+      )
     )
 
     // 8) camera: centered viewport, zoom in so room > viewport
@@ -250,6 +274,9 @@ export default class RoomManager {
   }
 
   exitRoom(exitPointOutside: Phaser.Math.Vector2) {
+    this.active = false
+    this.eKey = undefined
+
     this.scene.player.setSpeed(-1)
     this.scene.player.setScale(1)
 
@@ -274,8 +301,13 @@ export default class RoomManager {
     this.map = undefined
 
     // decoy off
-    this.dummyPlayer?.destroy()
-    this.dummyPlayer = undefined
+    this.decoyCollider?.destroy()
+    this.decoyCollider = undefined
+    this.clearEnemyExplicitTargets()
+    if (this.dummyPlayer) {
+      this.dummyPlayer.destroy()
+      this.dummyPlayer = undefined
+    }
 
     // re-enable outside collisions
     this.scene.outsideColliders?.forEach((c) => (c.active = true))
@@ -304,11 +336,66 @@ export default class RoomManager {
       this.scene.physics.world.setBounds(b.x, b.y, b.width, b.height)
       this.prevWorldBounds = undefined
     }
-
-    this.active = false
   }
 
   // ---- helpers ----
+
+  public getAimWorld(pointer: Phaser.Input.Pointer): Phaser.Math.Vector2 {
+    const cam =
+      this.active && this.roomCam ? this.roomCam : this.scene.cameras.main
+    const out = new Phaser.Math.Vector2()
+    pointer.positionToCamera(cam, out as any) // fills out.x/out.y with cam-space world coords
+    return out
+  }
+
+  public attachToRoom(go: Phaser.GameObjects.GameObject) {
+    if (this.roomLayer) this.roomLayer.add(go)
+  }
+  public isInsideRoom() {
+    return this.active
+  }
+
+  private wireDecoyDamageRelay() {
+    this.decoyCollider?.destroy()
+    if (!this.dummyPlayer) return
+
+    // Enemy bullets hitting the decoy should damage the real player.
+    this.decoyCollider = this.scene.physics.add.overlap(
+      this.scene.enemyBullets,
+      this.dummyPlayer,
+      (bullet: any) => {
+        const dmg = bullet?.damage ?? 10
+        this.scene.player.takeDamage(dmg)
+        bullet?.destroy?.()
+      }
+    )
+  }
+
+  private retargetEnemiesToDecoy() {
+    if (!this.dummyPlayer) return
+    this.scene.enemies.forEach((e) =>
+      (e as any).setExplicitTarget?.(this.dummyPlayer)
+    )
+  }
+
+  private clearEnemyExplicitTargets() {
+    this.scene.enemies.forEach((e) => (e as any).setExplicitTarget?.(null))
+  }
+
+  private makeDecoyAtDoor(entry: Phaser.Math.Vector2) {
+    this.dummyPlayer = this.scene.add.sprite(entry.x, entry.y, "player")
+    this.scene.physics.world.enable(this.dummyPlayer)
+    const dBody = this.dummyPlayer.body as Phaser.Physics.Arcade.Body
+
+    // Make it feel like a “standing” player outside.
+    dBody.setImmovable(true).setAllowGravity(false)
+    this.dummyPlayer.setDepth(5)
+
+    // match player body size/offset so bullets overlap reliably
+    // const pBody = this.scene.player.body as Phaser.Physics.Arcade.Body
+    // dBody.setSize(pBody.width, pBody.height)
+    // dBody.setOffset(pBody.offset.x, pBody.offset.y)
+  }
 
   // Gather world-space centers of tiles that are *not* walls or door.
   private getOpenTileCenters(): Phaser.Math.Vector2[] {

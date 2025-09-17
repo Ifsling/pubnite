@@ -71,6 +71,9 @@ export default class Enemy extends Phaser.GameObjects.Container {
   // Regen
   private lastDamageAt = 0
 
+  //
+  private explicitTarget: Phaser.GameObjects.GameObject | null = null
+
   constructor(
     scene: GameScene,
     x: number,
@@ -144,6 +147,9 @@ export default class Enemy extends Phaser.GameObjects.Container {
         return new Pistol(this.scene, 0, 0)
     }
   }
+  public setExplicitTarget(t: Phaser.GameObjects.GameObject | null) {
+    this.explicitTarget = t
+  }
   private equipHelmet() {
     this.hasHelmet = true
     this.helmetHealth = 50
@@ -211,10 +217,24 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
   // --- Targeting
   private acquireTarget(): Target {
+    // If an explicit target (e.g., decoy) is set and alive, prefer it.
+    if (this.explicitTarget && (this.explicitTarget as any).active !== false) {
+      const d = Phaser.Math.Distance.Between(
+        this.x,
+        this.y,
+        (this.explicitTarget as any).x,
+        (this.explicitTarget as any).y
+      )
+      if (d <= FOLLOW_DISTANCE) {
+        return this.explicitTarget as any
+      }
+    }
+
     const candidates: Target[] = [
       this.scene.player,
       ...this.scene.enemies.filter((e) => e !== this),
     ]
+
     let best: Target = null
     let bestDist = Infinity
 
@@ -228,11 +248,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
       }
     }
 
-    return best &&
-      Phaser.Math.Distance.Between(this.x, this.y, best.x, best.y) <=
-        FOLLOW_DISTANCE
-      ? best
-      : null
+    return best && bestDist <= FOLLOW_DISTANCE ? best : null
   }
 
   // --- Pathing

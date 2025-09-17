@@ -172,7 +172,10 @@ export default class Player extends Phaser.GameObjects.Container {
     this.scene!.input!.on("pointermove", (pointer: Phaser.Input.Pointer) => {
       if (!this.isAlive || !this.aimingGrenade) return
       const origin = new Phaser.Math.Vector2(this.x, this.y)
-      const to = new Phaser.Math.Vector2(pointer.worldX, pointer.worldY)
+      const aimPt =
+        this.scene.roomManager?.getAimWorld(pointer) ??
+        new Phaser.Math.Vector2(pointer.worldX, pointer.worldY)
+      const to = new Phaser.Math.Vector2(aimPt.x, aimPt.y)
       const vel = this.getAimVelocity(origin, to)
       this.renderAimDots(origin, vel)
     })
@@ -220,12 +223,12 @@ export default class Player extends Phaser.GameObjects.Container {
     if (activeGun) {
       // The gun is a child of the player (at local 0,0). Rotate it toward pointer using world coords.
       const pointer = this.scene.input.activePointer
-      const angle = Phaser.Math.Angle.Between(
-        this.x,
-        this.y,
-        pointer.worldX,
-        pointer.worldY
-      )
+
+      const aimPt =
+        this.scene.roomManager?.getAimWorld(pointer) ??
+        new Phaser.Math.Vector2(pointer.worldX, pointer.worldY)
+      const angle = Phaser.Math.Angle.Between(this.x, this.y, aimPt.x, aimPt.y)
+
       activeGun.setRotation(angle)
       activeGun.update()
 
@@ -265,7 +268,12 @@ export default class Player extends Phaser.GameObjects.Container {
 
     if (this.aimingGrenade) {
       const origin = new Phaser.Math.Vector2(this.x, this.y)
-      const to = new Phaser.Math.Vector2(pointer.worldX, pointer.worldY)
+
+      const aimPt =
+        this.scene.roomManager?.getAimWorld(pointer) ??
+        new Phaser.Math.Vector2(pointer.worldX, pointer.worldY)
+      const to = new Phaser.Math.Vector2(aimPt.x, aimPt.y)
+
       const vel = this.getAimVelocity(origin, to)
       this.throwGrenade(vel)
       this.grenadeArmed = false

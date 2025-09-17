@@ -14,7 +14,10 @@ export default class Pistol extends Gun {
     super(scene, x, y, "pistol", 15, 500, PISTOL_BULLET, "pistol")
   }
 
-  public tryShoot(shooter: Player | Enemy, pointer: Phaser.Input.Pointer): boolean {
+  public tryShoot(
+    shooter: Player | Enemy,
+    pointer: Phaser.Input.Pointer
+  ): boolean {
     if (!this.canShoot()) return false
 
     this.lastShot = this.scene.time.now
