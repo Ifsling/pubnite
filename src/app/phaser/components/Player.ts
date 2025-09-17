@@ -68,10 +68,10 @@ export default class Player extends Phaser.GameObjects.Container {
     super(scene, x, y)
 
     this.scene = scene
+
+    // Character sprite lives inside the container
     this.playerSprite = scene.add.sprite(0, 0, "player").setScale(size)
     this.add(this.playerSprite)
-    if (speed) this.speed = speed
-    else this.speed = this.defaultSpeed
 
     this.gunsContainer = scene.add.container(0, 0)
     this.add(this.gunsContainer)
@@ -88,11 +88,11 @@ export default class Player extends Phaser.GameObjects.Container {
     this.bag.visible = false
     this.add(this.bag)
 
+    // Physics on the player container; body sized to the *sprite*, not children.
     scene.physics.world.enable(this)
     const body = this.body as Phaser.Physics.Arcade.Body
-    body.setSize(this.playerSprite.width, this.playerSprite.height)
-    body.setOffset(-this.playerSprite.width / 2, -this.playerSprite.height / 2)
-    body.collideWorldBounds = true
+    body.setCollideWorldBounds(true)
+    this.syncBodyToSprite()
 
     this.setInteractive()
     scene.add.existing(this)
@@ -101,6 +101,30 @@ export default class Player extends Phaser.GameObjects.Container {
     this.shooterType = "player"
 
     GameScene.totalPlayers += 1
+
+    if (speed) this.speed = speed
+    else this.speed = this.defaultSpeed
+  }
+
+  // --- Ensure the hitbox stays tightly around the character sprite (not guns).
+  private syncBodyToSprite() {
+    const body = this.body as Phaser.Physics.Arcade.Body
+    if (!body || !this.playerSprite) return
+
+    // Use display size (accounts for container + sprite scale)
+    const w = this.playerSprite.displayWidth
+    const h = this.playerSprite.displayHeight
+
+    body.setSize(w, h)
+    // Center the body on the container origin (0,0 is sprite center)
+    body.setOffset(-w / 2, -h / 2)
+  }
+
+  // Override setScale so RoomManager’s scaling auto-fixes the hitbox.
+  public override setScale(x: number, y?: number): this {
+    super.setScale(x, y ?? x)
+    this.syncBodyToSprite()
+    return this
   }
 
   private setupControls(): void {
@@ -191,18 +215,22 @@ export default class Player extends Phaser.GameObjects.Container {
 
     if (this.bombIcon) this.bombIcon.setPosition(this.x, this.y - 60)
 
-    if (this.aimingGrenade && this.bombIcon) {
-      this.bombIcon.setPosition(this.x, this.y - 60)
-    }
-
+    // Aim & fire
     const activeGun = this.getActiveGun()
     if (activeGun) {
-      activeGun.x = this.x
-      activeGun.y = this.y
-      activeGun.rotateToPointer(this.scene.input.activePointer)
+      // The gun is a child of the player (at local 0,0). Rotate it toward pointer using world coords.
+      const pointer = this.scene.input.activePointer
+      const angle = Phaser.Math.Angle.Between(
+        this.x,
+        this.y,
+        pointer.worldX,
+        pointer.worldY
+      )
+      activeGun.setRotation(angle)
       activeGun.update()
-      if (activeGun instanceof Ak47 && this.scene.input.activePointer.isDown) {
-        activeGun.tryShoot(this, this.scene.input.activePointer)
+
+      if (activeGun instanceof Ak47 && pointer.isDown) {
+        activeGun.tryShoot(this, pointer)
       }
     }
   }
@@ -289,7 +317,12 @@ export default class Player extends Phaser.GameObjects.Container {
     }
     const gun = this.createGunInstance(gunSpriteKey)
     if (!gun) return
+
+    // Parent the gun to the *player’s gunsContainer* so it inherits scale/position.
+    gun.setPosition(0, 0)
+    this.gunsContainer.add(gun)
     gun.visible = false
+
     this.gunSlots[emptyIndex] = gun
     if (this.activeGunIndex === -1) {
       this.setActiveGun(emptyIndex)
@@ -297,15 +330,16 @@ export default class Player extends Phaser.GameObjects.Container {
   }
 
   private createGunInstance(gunType: string): Gun | null {
+    // Create at (0,0). We'll parent it into the gunsContainer.
     switch (gunType) {
       case "pistol":
-        return new Pistol(this.scene, this.x, this.y)
+        return new Pistol(this.scene, 0, 0)
       case "ak47":
-        return new Ak47(this.scene, this.x, this.y)
+        return new Ak47(this.scene, 0, 0)
       case "shotgun":
-        return new Shotgun(this.scene, this.x, this.y)
+        return new Shotgun(this.scene, 0, 0)
       case "sniper":
-        return new Sniper(this.scene, this.x, this.y)
+        return new Sniper(this.scene, 0, 0)
       default:
         return null
     }
