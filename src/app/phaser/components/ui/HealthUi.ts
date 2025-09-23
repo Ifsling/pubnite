@@ -1,5 +1,5 @@
 import * as Phaser from "phaser"
-import Player from "./Player"
+import Player from "../Player"
 
 export default class HealthUI {
   private scene: Phaser.Scene
@@ -12,11 +12,7 @@ export default class HealthUI {
     this.scene = scene
     this.player = player
 
-    this.container = scene.add.container(
-      scene.scale.width / 2,
-      scene.scale.height - 100
-    )
-    this.container.setScrollFactor(0).setDepth(999)
+    this.container = scene.add.container(0, 0)
 
     const bg = scene.add.rectangle(0, 0, 220, 30, 0x000000).setOrigin(0.5)
     this.healthBar = scene.add.rectangle(0, 0, 200, 20, 0xff0000).setOrigin(0.5)
@@ -28,6 +24,10 @@ export default class HealthUI {
       .setOrigin(0.5)
 
     this.container.add([bg, this.healthBar, this.healthText])
+  }
+
+  public getContainer(): Phaser.GameObjects.Container {
+    return this.container
   }
 
   public update() {

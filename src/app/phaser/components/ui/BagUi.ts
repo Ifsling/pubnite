@@ -1,8 +1,8 @@
 import * as Phaser from "phaser"
-import { HEALERS_HEAL_AMOUNT } from "../Constants"
-import GameScene from "../scenes/GameScene"
+import { HEALERS_HEAL_AMOUNT } from "../../Constants"
+import GameScene from "../../scenes/GameScene"
+import type Player from "../Player"
 import LoadingHUD from "./LoadingHud"
-import type Player from "./Player"
 
 export default class BagUI {
   private scene: GameScene

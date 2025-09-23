@@ -31,7 +31,7 @@ export function SetupEasyStar(scene: GameScene) {
 
   easystar.setGrid(grid)
   easystar.setAcceptableTiles([0])
-  easystar.enableDiagonals()
+  easystar.disableDiagonals()
   easystar.disableCornerCutting()
   easystar.setIterationsPerCalculation(1000)
   ;(scene as any).easystar = easystar

@@ -1,14 +1,15 @@
 import GameScene from "./scenes/GameScene"
 
 export function PreloadAssets(scene: GameScene) {
-  GameScene.totalPlayers = 0
+  const tex = scene.textures
 
-  scene.textures.generate("blank", {
-    data: ["."],
-    pixelWidth: 1,
-    pixelHeight: 1,
-  })
-
+  if (!tex.exists("blank")) {
+    scene.textures.generate("blank", {
+      data: ["."],
+      pixelWidth: 1,
+      pixelHeight: 1,
+    })
+  }
   scene.load.image("tileset", "/map-items/tileset.png")
   scene.load.image("rooms_tileset", "/map-items/rooms_tileset.png")
 

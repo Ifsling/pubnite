@@ -1,6 +1,6 @@
 // src/components/BulletCountUI.ts
 import * as Phaser from "phaser"
-import Gun from "./guns/Gun"
+import Gun from "../guns/Gun"
 
 export default class BulletCountUI {
   private scene: Phaser.Scene

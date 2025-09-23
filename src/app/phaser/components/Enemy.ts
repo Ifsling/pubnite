@@ -42,6 +42,7 @@ type GunKey = "pistol" | "ak47" | "shotgun" | "sniper"
 
 export default class Enemy extends Phaser.GameObjects.Container {
   public scene: GameScene
+
   public shooterType: "player" | "enemy" = "enemy"
 
   // visuals
@@ -75,6 +76,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
   private path: { x: number; y: number }[] = []
   private nextPathRecalcAt = 0
   private goalTile: { x: number; y: number } | null = null
+  private patrolTarget: { x: number; y: number } | null = null // ✨ Patrol destination
 
   // targeting
   private target: Target = null
@@ -84,7 +86,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
     scene: GameScene,
     x: number,
     y: number,
-    _player: Player, // kept for compatibility
+    _player: Player,
     collisionItems?: (Phaser.Tilemaps.TilemapLayer | null)[]
   ) {
     super(scene, x, y)
@@ -116,6 +118,8 @@ export default class Enemy extends Phaser.GameObjects.Container {
         if (layer) scene.physics.add.collider(this, layer)
       })
     }
+
+    scene.totalPlayers += 1
 
     // choose nearest entry (world coords)
     this.entryTarget = this.findNearestEntry()
@@ -376,6 +380,22 @@ export default class Enemy extends Phaser.GameObjects.Container {
     this.recalcMaxHealth()
   }
 
+  // ✨ Picks a random spawnable location to patrol to
+  private pickNewPatrolTarget() {
+    const locations = this.scene.spawnableLocations
+    if (!locations || locations.length === 0 || !this.tileToWorld) {
+      this.patrolTarget = null
+      return
+    }
+
+    const randomTile = Phaser.Math.RND.pick(locations)
+    const worldCoords = this.tileToWorld(randomTile.x, randomTile.y)
+
+    this.patrolTarget = { x: worldCoords.x, y: worldCoords.y }
+    this.goalTile = null
+    this.path = []
+  }
+
   // ==== Main update ====
   public async update(time: number, _delta: number) {
     if (this.phase === Phase.Dead) return
@@ -430,7 +450,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
       return
     }
 
-    // Phase 3: Hunting
+    // Phase 3: Hunting (✨ Updated with patrol logic)
     if (this.phase === Phase.Hunting) {
       const newTarget = this.acquireTarget()
       if (newTarget !== this.target) {
@@ -443,6 +463,9 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
       let goalWorld: { x: number; y: number } | null = null
       if (this.target) {
+        // Target acquired: cancel patrol and calculate standoff point.
+        this.patrolTarget = null
+
         const dist = Phaser.Math.Distance.Between(
           this.x,
           this.y,
@@ -455,6 +478,25 @@ export default class Enemy extends Phaser.GameObjects.Container {
           dist <= STANDOFF_DIST + STANDOFF_HYST
         if (!withinShoot || !withinStandoff)
           goalWorld = this.standoffPointFromTarget(this.target.x, this.target.y)
+      } else {
+        // No target: patrol to a random spawnable location.
+        if (!this.patrolTarget) {
+          this.pickNewPatrolTarget()
+        }
+        if (this.patrolTarget) {
+          goalWorld = this.patrolTarget
+          const distToPatrol = Phaser.Math.Distance.Between(
+            this.x,
+            this.y,
+            goalWorld.x,
+            goalWorld.y
+          )
+          // If we've reached the destination, clear it to pick a new one next update.
+          if (distToPatrol < 40) {
+            this.patrolTarget = null
+            goalWorld = null // Stop moving for this frame.
+          }
+        }
       }
 
       if (goalWorld) {
@@ -546,8 +588,13 @@ export default class Enemy extends Phaser.GameObjects.Container {
       if (this.enemyGunType === "ak47" && this.gun instanceof Ak47)
         this.gun.stopFiring?.()
       this.phase = Phase.Dead
-      this.scene.events.emit("enemy-killed", this)
+
+      // ✨ FIX: Remove enemy from the list FIRST
       this.scene.enemies = this.scene.enemies.filter((e) => e !== this)
+
+      // ✨ THEN, emit the event with the updated state
+      this.scene.events.emit("enemy-killed", this)
+
       this.healthBar.destroy()
       this.healthBarBg.destroy()
       this.destroy()

@@ -38,7 +38,7 @@ export default class Player extends Phaser.GameObjects.Container {
     D: Phaser.Input.Keyboard.Key
   }
 
-  private defaultSpeed: number = 500
+  private defaultSpeed: number = 1000
   private speed: number = 500
   private maxHealth: number = 100
   private currentHealth: number = 100
@@ -100,7 +100,7 @@ export default class Player extends Phaser.GameObjects.Container {
     this.setupControls()
     this.shooterType = "player"
 
-    GameScene.totalPlayers += 1
+    scene.totalPlayers += 1
 
     if (speed) this.speed = speed
     else this.speed = this.defaultSpeed

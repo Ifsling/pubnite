@@ -1,17 +1,17 @@
+// src/scenes/GameScene.ts
 import { getOneSpawnLocationWithinMap } from "@/src/app/utils"
 import EasyStar from "easystarjs"
 import * as Phaser from "phaser"
-import BagUI from "../components/BagUi"
-import BulletCountUI from "../components/BulletCountUi"
-import DeathOverlay from "../components/DeathOverlay"
 import { SetupEasyStar } from "../components/easystar/EasyStarSetup"
 import Enemy from "../components/Enemy"
-import GunUI from "../components/GunUi"
-import HealthUI from "../components/HealthUi"
 import Player from "../components/Player"
-import PlayerCountUI from "../components/PlayerCountUi"
 import RoomManager from "../components/RoomManager"
 import SpreadHouseEntries from "../components/SpreadHouseEntries"
+import BagUI from "../components/ui/BagUi"
+import BulletCountUI from "../components/ui/BulletCountUi"
+import DeathOverlay from "../components/ui/DeathOverlay"
+import GunAndHealthUi from "../components/ui/GunAndHealthUi"
+import PlayerCountUI from "../components/ui/PlayerCountUi"
 import {
   COLLECTABLE_SPAWN_CHANCE,
   COLLECTABLES,
@@ -29,8 +29,9 @@ export default class GameScene extends Phaser.Scene {
   map!: Phaser.Tilemaps.Tilemap
   player!: Player
   bagUI!: BagUI
-  healthUI!: HealthUI
-  gunUI!: GunUI
+  // healthUI!: HealthUI
+  // gunUI!: GunUI
+  healthAndGunUI!: GunAndHealthUi
   bulletCountUI!: BulletCountUI
   playerCountUI!: PlayerCountUI
   enemies: Enemy[] = []
@@ -46,7 +47,8 @@ export default class GameScene extends Phaser.Scene {
 
   outsideColliders: Phaser.Physics.Arcade.Collider[] = []
 
-  public static totalPlayers: number = 0
+  totalPlayers: number = 0
+  public spawnableLocations: { x: number; y: number }[] = [] // ✨ Added property
 
   constructor() {
     super("MyScene")
@@ -76,13 +78,14 @@ export default class GameScene extends Phaser.Scene {
 
     this.player = new Player(this, 1500, 3400)
     this.bagUI = new BagUI(this, this.player)
-    this.healthUI = new HealthUI(this, this.player)
-    this.gunUI = new GunUI(this, this.player)
+    // this.healthUI = new HealthUI(this, this.player)
+    // this.gunUI = new GunUI(this, this.player)
     this.bulletCountUI = new BulletCountUI(this)
     this.playerBullets = this.physics.add.group()
     this.enemyBullets = this.physics.add.group()
     this.playerCountUI = new PlayerCountUI(this)
     this.roomManager = new RoomManager(this)
+    this.healthAndGunUI = new GunAndHealthUi(this, this.player)
 
     // ---------- Spreading Enemies -------------
 
@@ -95,12 +98,14 @@ export default class GameScene extends Phaser.Scene {
           bush,
           stones,
         ])
+        this.playerCountUI.update()
       })
     }
 
     // -----------------------------------
 
     spawnableLocations().then((locations) => {
+      this.spawnableLocations = locations // ✨ Storing locations for enemies to use
       locations.forEach((loc) => {
         if (houseEntryPoints.includes([loc.x, loc.y])) return
         // -------- Spreading Collectables --------
@@ -149,11 +154,18 @@ export default class GameScene extends Phaser.Scene {
 
     // Events listening and handling
     this.events.on("enemy-killed", (enemy: Enemy) => {
-      this.playerCountUI.update(enemy)
+      this.playerCountUI.update() // ✨ Update UI
+
+      // ✨ Check for win condition
+      const aliveEnemies = this.enemies.filter((e) => e.active).length
+      if (this.player.isAlive && aliveEnemies === 0) {
+        new DeathOverlay(this, this.enemies, true, this.totalPlayers)
+      }
     })
 
     this.events.on("player-dead", () => {
-      new DeathOverlay(this, this.enemies)
+      this.playerCountUI.update() // ✨ Update UI on player death
+      new DeathOverlay(this, this.enemies, false, this.totalPlayers)
     })
 
     this.cameras.main.startFollow(this.player)
@@ -162,10 +174,11 @@ export default class GameScene extends Phaser.Scene {
   update(time: number, delta: number) {
     this.player.update()
     this.bagUI.update()
-    this.healthUI.update()
-    this.gunUI.update()
+    // this.healthUI.update()
+    // this.gunUI.update()
     this.roomManager?.update()
     this.bulletCountUI.update(this.player.getActiveGun())
+    this.healthAndGunUI.update()
 
     this.enemies.forEach((enemy) => {
       if (enemy.active) {
@@ -176,6 +189,16 @@ export default class GameScene extends Phaser.Scene {
     // Handle G key for pickup
     if (this.input.keyboard!.checkDown(this.input.keyboard!.addKey("G"), 250)) {
       this.player.tryPickup()
+    }
+
+    // TEMP --- DELETE THIS LATER ----
+    if (this.input.keyboard!.checkDown(this.input.keyboard!.addKey("P"), 250)) {
+      console.log("PRESSED P")
+      this.enemies.forEach((enemy) => {
+        if (enemy.active) {
+          console.log("Position: ", enemy.x, enemy.y)
+        }
+      })
     }
   }
 }
