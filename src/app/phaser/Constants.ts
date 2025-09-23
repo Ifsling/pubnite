@@ -1,6 +1,6 @@
 export const MAP_SCALE_FACTOR = 1.4
 export const COLLECTABLE_SPAWN_CHANCE = 0.07
-export const NO_OF_ENEMIES = 2
+export const NO_OF_ENEMIES = 10
 
 export const ammoAmounts: { [key: string]: number } = {
   pistol: 15,
