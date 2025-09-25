@@ -186,6 +186,8 @@ export default class Player extends Phaser.GameObjects.Container {
     const body = this.body as Phaser.Physics.Arcade.Body
     if (!body) return
 
+    if (!body.enable) return
+
     const now = this.scene.time.now
 
     // If slipping, force slip velocity and skip input movement for the duration.

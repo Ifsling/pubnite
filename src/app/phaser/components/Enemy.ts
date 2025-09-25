@@ -9,24 +9,19 @@ import Pistol from "./guns/Pistol"
 import Shotgun from "./guns/Shotgun"
 import Sniper from "./guns/Sniper"
 
-// ==== Tunables ====
-// Movement / pathing
 const CHASE_SPEED = 300
 const PATH_RECALC_MS = 250
 const WAYPOINT_EPS = 18
 
-// Combat
 const FOLLOW_DISTANCE = 2000
 const SHOOT_DISTANCE = 900
 const FIRE_COOLDOWN_MS = 300
 const STANDOFF_DIST = 300
 const STANDOFF_HYST = 40
 
-// Looting
 const LOOT_WAIT_MIN_MS = 5000
 const LOOT_WAIT_MAX_MS = 10000
 
-// Soft separation
 const SEPARATION_RADIUS = 120
 const SEPARATION_FORCE = 200
 
@@ -42,10 +37,11 @@ type GunKey = "pistol" | "ak47" | "shotgun" | "sniper"
 
 export default class Enemy extends Phaser.GameObjects.Container {
   public scene: GameScene
-
   public shooterType: "player" | "enemy" = "enemy"
 
-  // visuals
+  // ✨ Landing gate
+  public landed: boolean = false
+
   private sprite: Phaser.GameObjects.Sprite
   private healthBarBg: Phaser.GameObjects.Graphics
   private healthBar: Phaser.GameObjects.Graphics
@@ -53,12 +49,10 @@ export default class Enemy extends Phaser.GameObjects.Container {
   private readonly healthBarHeight = 6
   private readonly healthBarOffsetY = -50
 
-  // gear / combat
   private gun: Gun | null = null
   private enemyGunType: GunKey | null = null
   private lastShotTime = 0
 
-  // durability
   private hasHelmet = false
   private hasVest = false
   private helmetHealth = 0
@@ -66,19 +60,16 @@ export default class Enemy extends Phaser.GameObjects.Container {
   private maxHealth = 100
   private currentHealth = 100
 
-  // behavior
   private phase: Phase = Phase.GoingToEntry
   private entryTarget: Phaser.Math.Vector2 | null = null
   private lootStartedAt = 0
   private lootWaitDuration = 0
 
-  // movement/pathing
   private path: { x: number; y: number }[] = []
   private nextPathRecalcAt = 0
   private goalTile: { x: number; y: number } | null = null
-  private patrolTarget: { x: number; y: number } | null = null // ✨ Patrol destination
+  private patrolTarget: { x: number; y: number } | null = null
 
-  // targeting
   private target: Target = null
   private explicitTarget: Phaser.GameObjects.GameObject | null = null
 
@@ -92,27 +83,26 @@ export default class Enemy extends Phaser.GameObjects.Container {
     super(scene, x, y)
     this.scene = scene
 
-    // visuals
     this.sprite = scene.add.sprite(0, 0, "villian")
     this.add(this.sprite)
 
-    // physics on the container; size to sprite
     scene.physics.world.enable(this)
     const body = this.body as Phaser.Physics.Arcade.Body
     body.setCollideWorldBounds(true)
     body.setSize(this.sprite.width, this.sprite.height)
     body.setOffset(-this.sprite.width / 2, -this.sprite.height / 2)
 
-    // add to scene & registry
     scene.add.existing(this)
     scene.enemies.push(this)
 
-    // health bar
     this.healthBarBg = scene.add.graphics()
     this.healthBar = scene.add.graphics()
     this.drawHealthBar()
 
-    // map collisions (if provided)
+    this.setUIMVisible(false)
+    this.setVisible(false)
+    ;(this.body as Phaser.Physics.Arcade.Body).enable = false
+
     if (collisionItems) {
       collisionItems.forEach((layer) => {
         if (layer) scene.physics.add.collider(this, layer)
@@ -121,11 +111,12 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
     scene.totalPlayers += 1
 
-    // choose nearest entry (world coords)
     this.entryTarget = this.findNearestEntry()
-  }
 
-  // ==== Helpers ====
+    // ✨ Start hidden & physics disabled; becomes active when parachute lands
+    this.setVisible(false)
+    body.enable = false
+  }
 
   public setExplicitTarget(t: Phaser.GameObjects.GameObject | null) {
     this.explicitTarget = t
@@ -163,23 +154,17 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
   private findNearestEntry(): Phaser.Math.Vector2 | null {
     if (!houseEntryPoints || houseEntryPoints.length === 0) return null
-
-    // Convert from tile coords -> world coords if needed
     const toWorld = (p: any) => {
-      const tx = p[0] ?? p.x
-      const ty = p[1] ?? p.y
+      const tx = p[0] ?? p.x,
+        ty = p[1] ?? p.y
       if (this.tileToWorld) {
         const { x, y } = this.tileToWorld(tx, ty)
         return new Phaser.Math.Vector2(x, y)
-      } else {
-        // fallback: assume already world coords
-        return new Phaser.Math.Vector2(tx, ty)
       }
+      return new Phaser.Math.Vector2(tx, ty)
     }
-
     let best = toWorld(houseEntryPoints[0])
     let bestD = Phaser.Math.Distance.Between(this.x, this.y, best.x, best.y)
-
     for (const p of houseEntryPoints as any[]) {
       const wp = toWorld(p)
       const d = Phaser.Math.Distance.Between(this.x, this.y, wp.x, wp.y)
@@ -188,7 +173,6 @@ export default class Enemy extends Phaser.GameObjects.Container {
         bestD = d
       }
     }
-
     return best
   }
 
@@ -217,10 +201,9 @@ export default class Enemy extends Phaser.GameObjects.Container {
     return !!(this.worldToTile && this.tileToWorld && this.findPathTiles)
   }
 
-  // ---- Pathing (with fallback) ----
   private async computePathToWorld(wx: number, wy: number) {
     if (!this.hasPathfinding()) {
-      this.path = [] // force direct steering
+      this.path = []
       return
     }
     const s = this.worldToTile!(this.x, this.y)
@@ -231,7 +214,6 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
   private followPathOrSteerTo(wx: number, wy: number) {
     const body = this.body as Phaser.Physics.Arcade.Body
-
     if (this.hasPathfinding() && this.path && this.path.length >= 2) {
       const wp = this.path[1]
       const wpWorld = this.tileToWorld!(wp.x, wp.y)
@@ -246,10 +228,8 @@ export default class Enemy extends Phaser.GameObjects.Container {
       body.setVelocity(Math.cos(ang) * CHASE_SPEED, Math.sin(ang) * CHASE_SPEED)
       return
     }
-
-    // Fallback: steer straight to the goal
-    const dx = wx - this.x
-    const dy = wy - this.y
+    const dx = wx - this.x,
+      dy = wy - this.y
     const dist = Math.hypot(dx, dy)
     if (dist > 1) {
       const ang = Math.atan2(dy, dx)
@@ -260,7 +240,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
   }
 
   private async ensurePathToWorld(wx: number, wy: number, now: number) {
-    if (!this.hasPathfinding()) return // direct steering mode
+    if (!this.hasPathfinding()) return
     const goal = this.worldToTile!(wx, wy)
     if (
       !this.goalTile ||
@@ -274,11 +254,11 @@ export default class Enemy extends Phaser.GameObjects.Container {
   }
 
   private standoffPointFromTarget(tx: number, ty: number) {
-    const dx = this.x - tx
-    const dy = this.y - ty
+    const dx = this.x - tx,
+      dy = this.y - ty
     const len = Math.hypot(dx, dy) || 1
-    const nx = dx / len
-    const ny = dy / len
+    const nx = dx / len,
+      ny = dy / len
     return { x: tx + nx * STANDOFF_DIST, y: ty + ny * STANDOFF_DIST }
   }
 
@@ -289,8 +269,8 @@ export default class Enemy extends Phaser.GameObjects.Container {
       cnt = 0
     for (const e of this.scene.enemies) {
       if (e === this || !e.active) continue
-      const dx = this.x - e.x
-      const dy = this.y - e.y
+      const dx = this.x - (e as any).x
+      const dy = this.y - (e as any).y
       const d = Math.hypot(dx, dy)
       if (d > 0 && d < SEPARATION_RADIUS) {
         const strength = (SEPARATION_RADIUS - d) / SEPARATION_RADIUS
@@ -309,6 +289,11 @@ export default class Enemy extends Phaser.GameObjects.Container {
     }
   }
 
+  public setUIMVisible(v: boolean) {
+    this.healthBarBg.setVisible(v)
+    this.healthBar.setVisible(v)
+  }
+
   private acquireTarget(): Target {
     if (this.explicitTarget && (this.explicitTarget as any).active !== false) {
       const d = Phaser.Math.Distance.Between(
@@ -323,11 +308,16 @@ export default class Enemy extends Phaser.GameObjects.Container {
       this.scene.player,
       ...this.scene.enemies.filter((e) => e !== this),
     ]
-    let best: Player | Enemy | null = null
-    let bestDist = Infinity
+    let best: Player | Enemy | null = null,
+      bestDist = Infinity
     for (const c of candidates) {
       if (!c || (c instanceof Player && !c.isAlive)) continue
-      const d = Phaser.Math.Distance.Between(this.x, this.y, c.x, c.y)
+      const d = Phaser.Math.Distance.Between(
+        this.x,
+        this.y,
+        (c as any).x,
+        (c as any).y
+      )
       if (d < bestDist) {
         best = c
         bestDist = d
@@ -358,20 +348,16 @@ export default class Enemy extends Phaser.GameObjects.Container {
       )
   }
 
-  // ==== Loot/equip ====
   private equipRandomGear() {
     const gunChoices = ["pistol", "ak47", "shotgun", "sniper"] as const
     const idx = Phaser.Math.Between(0, gunChoices.length - 1)
     const chosen: GunKey = gunChoices[idx]
     this.enemyGunType = chosen
-
     this.gun = this.createGun(chosen)
     this.add(this.gun)
-
     const ammoToAdd = ammoAmounts[chosen] ?? 15
     this.gun.addAmmo(ammoToAdd)
-
-    const roll = Phaser.Math.Between(0, 2) // 0 none, 1 helmet, 2 both
+    const roll = Phaser.Math.Between(0, 2)
     if (roll === 1) this.equipHelmet()
     else if (roll === 2) {
       this.equipHelmet()
@@ -380,32 +366,30 @@ export default class Enemy extends Phaser.GameObjects.Container {
     this.recalcMaxHealth()
   }
 
-  // ✨ Picks a random spawnable location to patrol to
   private pickNewPatrolTarget() {
     const locations = this.scene.spawnableLocations
     if (!locations || locations.length === 0 || !this.tileToWorld) {
       this.patrolTarget = null
       return
     }
-
     const randomTile = Phaser.Math.RND.pick(locations)
     const worldCoords = this.tileToWorld(randomTile.x, randomTile.y)
-
     this.patrolTarget = { x: worldCoords.x, y: worldCoords.y }
     this.goalTile = null
     this.path = []
   }
 
-  // ==== Main update ====
   public async update(time: number, _delta: number) {
     if (this.phase === Phase.Dead) return
+
+    // ✨ Don’t run any AI until landed, and (optionally) while player is still in drop phase
+    if (!this.landed || (this.scene as any).inDropPhase) return
 
     const body = this.body as Phaser.Physics.Arcade.Body
 
     // Phase 1: Go to nearest entry
     if (this.phase === Phase.GoingToEntry) {
       if (!this.entryTarget) this.entryTarget = this.findNearestEntry()
-
       if (this.entryTarget) {
         const d = Phaser.Math.Distance.Between(
           this.x,
@@ -414,13 +398,12 @@ export default class Enemy extends Phaser.GameObjects.Container {
           this.entryTarget.y
         )
         if (d > 40) {
-          if (this.hasPathfinding()) {
+          if (this.hasPathfinding())
             await this.ensurePathToWorld(
               this.entryTarget.x,
               this.entryTarget.y,
               time
             )
-          }
           this.followPathOrSteerTo(this.entryTarget.x, this.entryTarget.y)
         } else {
           body.setVelocity(0)
@@ -438,7 +421,6 @@ export default class Enemy extends Phaser.GameObjects.Container {
       return
     }
 
-    // Phase 2: Looting (wait, then equip)
     if (this.phase === Phase.Looting) {
       body.setVelocity(0)
       if (time - this.lootStartedAt >= this.lootWaitDuration) {
@@ -450,7 +432,6 @@ export default class Enemy extends Phaser.GameObjects.Container {
       return
     }
 
-    // Phase 3: Hunting (✨ Updated with patrol logic)
     if (this.phase === Phase.Hunting) {
       const newTarget = this.acquireTarget()
       if (newTarget !== this.target) {
@@ -463,26 +444,24 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
       let goalWorld: { x: number; y: number } | null = null
       if (this.target) {
-        // Target acquired: cancel patrol and calculate standoff point.
         this.patrolTarget = null
-
         const dist = Phaser.Math.Distance.Between(
           this.x,
           this.y,
-          this.target.x,
-          this.target.y
+          (this.target as any).x,
+          (this.target as any).y
         )
         const withinShoot = dist <= SHOOT_DISTANCE
         const withinStandoff =
           dist >= STANDOFF_DIST - STANDOFF_HYST &&
           dist <= STANDOFF_DIST + STANDOFF_HYST
         if (!withinShoot || !withinStandoff)
-          goalWorld = this.standoffPointFromTarget(this.target.x, this.target.y)
+          goalWorld = this.standoffPointFromTarget(
+            (this.target as any).x,
+            (this.target as any).y
+          )
       } else {
-        // No target: patrol to a random spawnable location.
-        if (!this.patrolTarget) {
-          this.pickNewPatrolTarget()
-        }
+        if (!this.patrolTarget) this.pickNewPatrolTarget()
         if (this.patrolTarget) {
           goalWorld = this.patrolTarget
           const distToPatrol = Phaser.Math.Distance.Between(
@@ -491,21 +470,18 @@ export default class Enemy extends Phaser.GameObjects.Container {
             goalWorld.x,
             goalWorld.y
           )
-          // If we've reached the destination, clear it to pick a new one next update.
           if (distToPatrol < 40) {
             this.patrolTarget = null
-            goalWorld = null // Stop moving for this frame.
+            goalWorld = null
           }
         }
       }
 
       if (goalWorld) {
-        if (this.hasPathfinding()) {
+        if (this.hasPathfinding())
           await this.ensurePathToWorld(goalWorld.x, goalWorld.y, time)
-        }
         this.followPathOrSteerTo(goalWorld.x, goalWorld.y)
         this.applySeparation()
-
         const vlen = Math.hypot(body.velocity.x, body.velocity.y)
         if (vlen > CHASE_SPEED) {
           body.setVelocity(
@@ -517,44 +493,39 @@ export default class Enemy extends Phaser.GameObjects.Container {
         body.setVelocity(0)
       }
 
-      // Shooting
       if (this.gun && this.target) {
         const dist = Phaser.Math.Distance.Between(
           this.x,
           this.y,
-          this.target.x,
-          this.target.y
+          (this.target as any).x,
+          (this.target as any).y
         )
         const inRange = dist <= SHOOT_DISTANCE
-
         if (
           !inRange &&
           this.enemyGunType === "ak47" &&
           this.gun instanceof Ak47
-        ) {
+        )
           this.gun.stopFiring?.()
-        }
-
         if (inRange && time > this.lastShotTime + FIRE_COOLDOWN_MS) {
           if (this.gun.ammo <= 0) this.reload()
           if (this.enemyGunType === "ak47" && this.gun instanceof Ak47)
             this.gun.startFiring()
           this.gun.tryShoot(this, {
-            worldX: this.target.x,
-            worldY: this.target.y,
+            worldX: (this.target as any).x,
+            worldY: (this.target as any).y,
           } as Phaser.Input.Pointer)
           this.lastShotTime = time
         }
       }
 
-      // Visual aim
       if (this.gun) {
         const lookX = this.target
-          ? this.target.x
-          : this.x + (body.velocity.x || 1)
+          ? (this.target as any).x
+          : this.x + ((this.body as Phaser.Physics.Arcade.Body).velocity.x || 1)
         const lookY = this.target
-          ? this.target.y
-          : this.y + (body.velocity.y || 0)
+          ? (this.target as any).y
+          : this.y + ((this.body as Phaser.Physics.Arcade.Body).velocity.y || 0)
         this.gun.x = 0
         this.gun.y = 0
         this.gun.rotation = Phaser.Math.Angle.Between(
@@ -581,20 +552,14 @@ export default class Enemy extends Phaser.GameObjects.Container {
     })
   }
 
-  // ==== Damage / death ====
   public takeDamage(amount: number) {
     this.currentHealth -= amount
     if (this.currentHealth <= 0) {
       if (this.enemyGunType === "ak47" && this.gun instanceof Ak47)
         this.gun.stopFiring?.()
       this.phase = Phase.Dead
-
-      // ✨ FIX: Remove enemy from the list FIRST
       this.scene.enemies = this.scene.enemies.filter((e) => e !== this)
-
-      // ✨ THEN, emit the event with the updated state
       this.scene.events.emit("enemy-killed", this)
-
       this.healthBar.destroy()
       this.healthBarBg.destroy()
       this.destroy()
@@ -637,5 +602,14 @@ export default class Enemy extends Phaser.GameObjects.Container {
     const dmg = (bullet as any).damage ?? 10
     enemy.takeDamage(dmg)
     if ((bullet as any).destroy) (bullet as any).destroy()
+  }
+
+  public landAt(x: number, y: number) {
+    this.setPosition(x, y)
+    this.setVisible(true)
+    this.setUIMVisible(true)
+    const body = this.body as Phaser.Physics.Arcade.Body
+    body.enable = true
+    this.landed = true
   }
 }

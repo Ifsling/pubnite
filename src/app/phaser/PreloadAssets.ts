@@ -53,6 +53,8 @@ export function PreloadAssets(scene: GameScene) {
     "boomnut-no-glow",
     "/images/collectables/without-glow/boomnut.png"
   )
+  scene.load.image("airplane", "/images/aeroplane.png")
+  scene.load.image("drop_x", "/images/cross.png")
 
   scene.load.font("BRF", "/fonts/BRF.otf", "opentype")
 }
