@@ -19,8 +19,18 @@ export default class RoomManager {
   private static readonly DOOR_TWEEN_MS = 650
 
   // ---- loot config ----
-  private static readonly ROOM_GUN_KEYS = ["pistol", "ak47", "shotgun", "sniper"] as const
-  private static readonly ROOM_AMMO_KEYS = ["pistol_ammo", "ak47_ammo", "shotgun_ammo", "sniper_ammo"] as const
+  private static readonly ROOM_GUN_KEYS = [
+    "pistol",
+    "ak47",
+    "shotgun",
+    "sniper",
+  ] as const
+  private static readonly ROOM_AMMO_KEYS = [
+    "pistol_ammo",
+    "ak47_ammo",
+    "shotgun_ammo",
+    "sniper_ammo",
+  ] as const
   private static readonly AMMO_BY_GUN: Record<
     (typeof RoomManager.ROOM_GUN_KEYS)[number],
     (typeof RoomManager.ROOM_AMMO_KEYS)[number]
@@ -85,11 +95,18 @@ export default class RoomManager {
     const body = (player && (player.body as Phaser.Physics.Arcade.Body)) || null
     if (!body) return
 
-    const tiles = this.doorLayer.getTilesWithinWorldXY(body.x, body.y, body.width, body.height)
+    const tiles = this.doorLayer.getTilesWithinWorldXY(
+      body.x,
+      body.y,
+      body.width,
+      body.height
+    )
     const atDoor = tiles.some((tile) => tile.index !== -1)
 
     if (atDoor && Phaser.Input.Keyboard.JustDown(this.eKey)) {
-      const exit = this.entryPointOutside ?? new Phaser.Math.Vector2(this.scene.player.x, this.scene.player.y)
+      const exit =
+        this.entryPointOutside ??
+        new Phaser.Math.Vector2(this.scene.player.x, this.scene.player.y)
       this.exitRoom(exit)
     }
   }
@@ -130,9 +147,21 @@ export default class RoomManager {
 
     // 4) spawn **at the door layer center**
     const spawn = this.getDoorSpawnFromTileLayer(this.doorLayer)
-    this.scene.player.setPosition(spawn.x, spawn.y)
+
+    // compute world offset to align room so the door is exactly at the outside entry point
+    const dx = this.entryPointOutside!.x - spawn.x
+    const dy = this.entryPointOutside!.y - spawn.y
+
+    // shift room layers into world space
+    this.bgLayer.setPosition(dx, dy)
+    this.wallsLayer.setPosition(dx, dy)
+    this.doorLayer.setPosition(dx, dy)
+
+    // (optional but nice) keep player speed/scale for indoors
     this.scene.player.setScale(RoomManager.PLAYER_SCALE)
     this.scene.player.setSpeed(250)
+
+    // add the player to the room render layer *without* moving him
     this.roomLayer.add(this.scene.player)
 
     // 5) room loot
@@ -142,7 +171,9 @@ export default class RoomManager {
     this.scene.outsideColliders?.forEach((c) => (c.active = false))
 
     // 7) collide with room walls; bullets vs room walls
-    this.roomColliders.push(this.scene.physics.add.collider(this.scene.player, this.wallsLayer))
+    this.roomColliders.push(
+      this.scene.physics.add.collider(this.scene.player, this.wallsLayer)
+    )
     this.roomColliders.push(
       this.scene.physics.add.collider(
         this.scene.playerBullets,
@@ -183,23 +214,43 @@ export default class RoomManager {
 
     this.roomCam = this.scene.cameras.add(vx, vy, viewW, viewH)
     const baseCoverZoom = Math.max(viewW / mapW, viewH / mapH)
-    const zoom = Phaser.Math.Clamp(baseCoverZoom * RoomManager.ROOM_ZOOM_MULT, 0.1, RoomManager.ROOM_ZOOM_MAX)
-    this.roomCam.setZoom(zoom).setBounds(0, 0, mapW, mapH).startFollow(this.scene.player, true, 0.15, 0.15)
+    const zoom = Phaser.Math.Clamp(
+      baseCoverZoom * RoomManager.ROOM_ZOOM_MULT,
+      0.1,
+      RoomManager.ROOM_ZOOM_MAX
+    )
 
-    // 9) big overlay under bg
+    this.roomCam
+      .setZoom(zoom)
+      // bounds shifted by (dx,dy)
+      .setBounds(dx, dy, mapW, mapH)
+      .startFollow(this.scene.player, true, 0.15, 0.15)
+
+    // --- overlay under bg (also shifted) ---
     const visWorldW = viewW / zoom
     const visWorldH = viewH / zoom
     const overlayW = mapW + visWorldW * RoomManager.OVERLAY_PAD_MULT * 2
     const overlayH = mapH + visWorldH * RoomManager.OVERLAY_PAD_MULT * 2
+
     this.roomOverlay = this.scene.add
-      .rectangle(mapW / 2, mapH / 2, overlayW, overlayH, 0x000000, RoomManager.OVERLAY_ALPHA)
+      .rectangle(
+        dx + mapW / 2, // offset center X
+        dy + mapH / 2, // offset center Y
+        overlayW,
+        overlayH,
+        0x000000,
+        RoomManager.OVERLAY_ALPHA
+      )
       .setDepth(0)
     this.roomLayer.addAt(this.roomOverlay, 0)
 
     // 10) blink door layer
     this.scene.tweens.add({
       targets: this.doorLayer,
-      alpha: { from: RoomManager.DOOR_ALPHA_MIN, to: RoomManager.DOOR_ALPHA_MAX },
+      alpha: {
+        from: RoomManager.DOOR_ALPHA_MIN,
+        to: RoomManager.DOOR_ALPHA_MAX,
+      },
       yoyo: true,
       duration: RoomManager.DOOR_TWEEN_MS,
       repeat: -1,
@@ -207,8 +258,10 @@ export default class RoomManager {
     })
 
     // 11) routing: roomCam draws only roomLayer; mainCam ignores it
-    const allChildren = this.scene.children.list as Phaser.GameObjects.GameObject[]
-    const roomLayerGO = this.roomLayer as unknown as Phaser.GameObjects.GameObject
+    const allChildren = this.scene.children
+      .list as Phaser.GameObjects.GameObject[]
+    const roomLayerGO = this
+      .roomLayer as unknown as Phaser.GameObjects.GameObject
     this.roomCam.ignore(allChildren.filter((go) => go !== roomLayerGO))
     const mainCam = this.scene.cameras.main
     mainCam.stopFollow()
@@ -277,7 +330,8 @@ export default class RoomManager {
   // ---- helpers ----
 
   public getAimWorld(pointer: Phaser.Input.Pointer): Phaser.Math.Vector2 {
-    const cam = this.active && this.roomCam ? this.roomCam : this.scene.cameras.main
+    const cam =
+      this.active && this.roomCam ? this.roomCam : this.scene.cameras.main
     const out = new Phaser.Math.Vector2()
     pointer.positionToCamera(cam, out as any)
     return out
@@ -307,7 +361,9 @@ export default class RoomManager {
 
   private retargetEnemiesToDecoy() {
     if (!this.dummyPlayer) return
-    this.scene.enemies.forEach((e) => (e as any).setExplicitTarget?.(this.dummyPlayer))
+    this.scene.enemies.forEach((e) =>
+      (e as any).setExplicitTarget?.(this.dummyPlayer)
+    )
   }
 
   private clearEnemyExplicitTargets() {
@@ -343,7 +399,8 @@ export default class RoomManager {
   }
 
   private spawnLootInRoom() {
-    if (!this.map || !this.roomLayer || !this.wallsLayer || !this.doorLayer) return
+    if (!this.map || !this.roomLayer || !this.wallsLayer || !this.doorLayer)
+      return
 
     const openCenters = this.getOpenTileCenters()
     if (!openCenters.length) return
@@ -359,14 +416,23 @@ export default class RoomManager {
     let misc = 0
 
     for (const pt of openCenters) {
-      if (Phaser.Math.Distance.Between(pt.x, pt.y, doorSpawn.x, doorSpawn.y) < RoomManager.ROOM_GUN_MIN_DIST_FROM_SPAWN) {
+      if (
+        Phaser.Math.Distance.Between(pt.x, pt.y, doorSpawn.x, doorSpawn.y) <
+        RoomManager.ROOM_GUN_MIN_DIST_FROM_SPAWN
+      ) {
         continue
       }
       if (occupied.some((p) => tooClose(p, pt))) continue
 
       // 1) Gun roll
-      if (guns < RoomManager.MAX_GUNS_PER_ROOM && Math.random() < RoomManager.P_GUN) {
-        const gunKey = RoomManager.ROOM_GUN_KEYS[(Math.random() * RoomManager.ROOM_GUN_KEYS.length) | 0]
+      if (
+        guns < RoomManager.MAX_GUNS_PER_ROOM &&
+        Math.random() < RoomManager.P_GUN
+      ) {
+        const gunKey =
+          RoomManager.ROOM_GUN_KEYS[
+            (Math.random() * RoomManager.ROOM_GUN_KEYS.length) | 0
+          ]
         const item = AddPhysicsItem(
           this.scene,
           gunKey,
@@ -386,7 +452,10 @@ export default class RoomManager {
         if (ammo < RoomManager.MAX_AMMO_PER_ROOM && Math.random() < 0.5) {
           const ammoKey = RoomManager.AMMO_BY_GUN[gunKey]
           const dir = Phaser.Math.Angle.Random()
-          const off = new Phaser.Math.Vector2(pt.x + Math.cos(dir) * 22, pt.y + Math.sin(dir) * 22)
+          const off = new Phaser.Math.Vector2(
+            pt.x + Math.cos(dir) * 22,
+            pt.y + Math.sin(dir) * 22
+          )
           const ammoItem = AddPhysicsItem(
             this.scene,
             ammoKey,
@@ -407,9 +476,25 @@ export default class RoomManager {
       }
 
       // 2) Ammo roll
-      if (ammo < RoomManager.MAX_AMMO_PER_ROOM && Math.random() < RoomManager.P_AMMO) {
-        const ammoKey = RoomManager.ROOM_AMMO_KEYS[(Math.random() * RoomManager.ROOM_AMMO_KEYS.length) | 0]
-        const item = AddPhysicsItem(this.scene, ammoKey, pt.x, pt.y, true, false, true, "ammo", RoomManager.ROOM_ITEM_SCALE)
+      if (
+        ammo < RoomManager.MAX_AMMO_PER_ROOM &&
+        Math.random() < RoomManager.P_AMMO
+      ) {
+        const ammoKey =
+          RoomManager.ROOM_AMMO_KEYS[
+            (Math.random() * RoomManager.ROOM_AMMO_KEYS.length) | 0
+          ]
+        const item = AddPhysicsItem(
+          this.scene,
+          ammoKey,
+          pt.x,
+          pt.y,
+          true,
+          false,
+          true,
+          "ammo",
+          RoomManager.ROOM_ITEM_SCALE
+        )
         this.roomLayer.add(item)
         ;(item as Phaser.GameObjects.Sprite).setDepth(18)
         occupied.push(pt.clone())
@@ -418,10 +503,19 @@ export default class RoomManager {
       }
 
       // 3) Misc roll
-      if (misc < RoomManager.MAX_MISC_PER_ROOM && Math.random() < RoomManager.P_MISC) {
-        const key = RoomManager.ROOM_MISC_KEYS[(Math.random() * RoomManager.ROOM_MISC_KEYS.length) | 0]
+      if (
+        misc < RoomManager.MAX_MISC_PER_ROOM &&
+        Math.random() < RoomManager.P_MISC
+      ) {
+        const key =
+          RoomManager.ROOM_MISC_KEYS[
+            (Math.random() * RoomManager.ROOM_MISC_KEYS.length) | 0
+          ]
         const pickupType =
-          key === "ouchwrap" || key === "healbox" || key === "boomnut" || key === "slowmo-injection"
+          key === "ouchwrap" ||
+          key === "healbox" ||
+          key === "boomnut" ||
+          key === "slowmo-injection"
             ? "bagItem"
             : key === "faster-boi"
             ? "faster-boi"
@@ -448,10 +542,21 @@ export default class RoomManager {
     }
   }
 
-  private getDoorSpawnFromTileLayer(layer: Phaser.Tilemaps.TilemapLayer): Phaser.Math.Vector2 {
-    const tiles = layer.getTilesWithin(0, 0, layer.layer.width, layer.layer.height, { isNotEmpty: true })
+  private getDoorSpawnFromTileLayer(
+    layer: Phaser.Tilemaps.TilemapLayer
+  ): Phaser.Math.Vector2 {
+    const tiles = layer.getTilesWithin(
+      0,
+      0,
+      layer.layer.width,
+      layer.layer.height,
+      { isNotEmpty: true }
+    )
     if (!tiles.length) {
-      return new Phaser.Math.Vector2(this.map!.widthInPixels / 2, this.map!.heightInPixels / 2)
+      return new Phaser.Math.Vector2(
+        this.map!.widthInPixels / 2,
+        this.map!.heightInPixels / 2
+      )
     }
     let minTX = Infinity,
       minTY = Infinity,
