@@ -290,19 +290,109 @@ export default class GameScene extends Phaser.Scene {
       duration,
       ease: "Linear",
       onComplete: () => {
-        // If player never clicked, auto-drop at plane end.
-        if (this.inDropPhase && !this.dropTarget)
-          this.handlePlayerJump(end.x, end.y)
+        if (this.inDropPhase && !this.dropTarget) {
+          // Clamp plane’s end inside map
+          let tx = Phaser.Math.Clamp(end.x, 50, this.map.widthInPixels - 50)
+          let ty = Phaser.Math.Clamp(end.y, 50, this.map.heightInPixels - 50)
+
+          // Try to adjust to a walkable tile if helpers exist
+          const isWalkable = (this as any).isWalkableTile as
+            | ((tx: number, ty: number) => boolean)
+            | undefined
+          const worldToTile = (this as any).worldToTile as
+            | ((wx: number, wy: number) => { x: number; y: number })
+            | undefined
+          const tileToWorld = (this as any).tileToWorld as
+            | ((tx: number, ty: number) => { x: number; y: number })
+            | undefined
+
+          if (isWalkable && worldToTile && tileToWorld) {
+            const g = worldToTile(tx, ty)
+            if (!isWalkable(g.x, g.y)) {
+              // fall back to a random ground point if end isn’t walkable
+              const p = this.getRandomGroundPoint()
+              tx = p.x
+              ty = p.y
+            } else {
+              const c = tileToWorld(g.x, g.y)
+              tx = c.x
+              ty = c.y
+            }
+          }
+
+          this.handlePlayerJump(tx, ty)
+        }
       },
     })
 
-    // Enemies drop automatically along the flight path
-    this.scheduleEnemyDropsAlongFlight(start, end)
+    // Enemies drop automatically across the map
+    this.scheduleEnemyDropsAcrossMap(start, end, duration)
 
     // Player clicks to choose drop point
     this.input.once("pointerdown", (pointer: Phaser.Input.Pointer) => {
       const worldPt = new Phaser.Math.Vector2(pointer.worldX, pointer.worldY)
       this.handlePlayerJump(worldPt.x, worldPt.y)
+    })
+  }
+
+  /** Enemies jump from the plane but land at random spots anywhere on the map. */
+  private scheduleEnemyDropsAcrossMap(
+    start: Phaser.Math.Vector2,
+    end: Phaser.Math.Vector2,
+    flightMs: number
+  ) {
+    if (!this.enemies.length) return
+
+    // Simple parachuter factory (same look as before)
+    const makePara = (x: number, y: number, scale = 0.6) => {
+      const canopy = this.add.ellipse(0, -22, 30, 18, 0xffffff, 0.9)
+      const ropeL = this.add.line(0, 0, -8, -14, -2, 0, 0xffffff, 0.85)
+      const ropeR = this.add.line(0, 0, 8, -14, 2, 0, 0xffffff, 0.85)
+      const doll = this.add.rectangle(0, 0, 12, 18, 0x333333, 1)
+      return this.add
+        .container(x, y, [canopy, ropeL, ropeR, doll])
+        .setDepth(8500)
+        .setScale(scale)
+    }
+
+    // Stagger enemies across the flight time
+    const minDelay = 500
+    const maxDelay = Math.max(1500, flightMs - 1500)
+
+    this.enemies.forEach((enemy) => {
+      // pick a random time during flight to jump
+      const dropAtMs = Phaser.Math.Between(minDelay, maxDelay)
+
+      // pick a random landing target anywhere on the map (walkable if hooks exist)
+      const target = this.getRandomGroundPoint()
+
+      // schedule the jump while the plane tween is running
+      this.time.delayedCall(dropAtMs, () => {
+        // plane’s current position at jump moment
+        const px = (this.plane as any).x
+        const py = (this.plane as any).y
+
+        const para = makePara(px, py)
+        this.enemyParachuters.set(enemy, para)
+
+        const fallMs = Phaser.Math.Between(5000, 10000)
+        this.tweens.add({
+          targets: para,
+          x: target.x,
+          y: target.y,
+          duration: fallMs,
+          ease: "Sine.Out",
+          onComplete: () => {
+            enemy.setPosition(target.x, target.y)
+            enemy.setVisible(true)
+            const body = enemy.body as Phaser.Physics.Arcade.Body
+            body.enable = true
+            ;(enemy as any).landed = true
+            para.destroy()
+            this.enemyParachuters.delete(enemy)
+          },
+        })
+      })
     })
   }
 
@@ -430,18 +520,12 @@ export default class GameScene extends Phaser.Scene {
     })
   }
 
-  private scheduleEnemyDropsAlongFlight(
-    start: Phaser.Math.Vector2,
-    end: Phaser.Math.Vector2
-  ) {
-    if (!this.enemies.length) return
+  /** Pick a random walkable world position anywhere on the map. */
+  private getRandomGroundPoint(): Phaser.Math.Vector2 {
+    const W = this.map.widthInPixels
+    const H = this.map.heightInPixels
 
-    const lineVec = new Phaser.Math.Vector2(end.x - start.x, end.y - start.y)
-    const perp = new Phaser.Math.Vector2(
-      end.y - start.y,
-      -(end.x - start.x)
-    ).normalize()
-
+    // Optional hooks (if you wired them for pathfinding)
     const isWalkable = (this as any).isWalkableTile as
       | ((tx: number, ty: number) => boolean)
       | undefined
@@ -452,52 +536,24 @@ export default class GameScene extends Phaser.Scene {
       | ((tx: number, ty: number) => { x: number; y: number })
       | undefined
 
-    const makePara = (x: number, y: number, scale = 0.6) => {
-      const canopy = this.add.ellipse(0, -22, 30, 18, 0xffffff, 0.9)
-      const ropeL = this.add.line(0, 0, -8, -14, -2, 0, 0xffffff, 0.85)
-      const ropeR = this.add.line(0, 0, 8, -14, 2, 0, 0xffffff, 0.85)
-      const doll = this.add.rectangle(0, 0, 12, 18, 0x333333, 1)
-      return this.add
-        .container(x, y, [canopy, ropeL, ropeR, doll])
-        .setDepth(8500)
-        .setScale(scale)
-    }
+    // Try a bunch of random samples until we find a walkable tile (if hooks exist)
+    for (let i = 0; i < 60; i++) {
+      const rx = Phaser.Math.Between(30, W - 30)
+      const ry = Phaser.Math.Between(30, H - 30)
 
-    this.enemies.forEach((enemy) => {
-      // A random point along the plane path with small perpendicular offset
-      const t = Phaser.Math.FloatBetween(0.15, 0.9)
-      const baseX = start.x + lineVec.x * t
-      const baseY = start.y + lineVec.y * t
-      const offset = Phaser.Math.FloatBetween(-220, 220)
-      let wx = baseX + perp.x * offset
-      let wy = baseY + perp.y * offset
-
-      // Clamp to walkable tile if helpers exist
       if (isWalkable && worldToTile && tileToWorld) {
-        const g = worldToTile(wx, wy)
+        const g = worldToTile(rx, ry)
         if (isWalkable(g.x, g.y)) {
           const c = tileToWorld(g.x, g.y)
-          wx = c.x
-          wy = c.y
+          return new Phaser.Math.Vector2(c.x, c.y)
         }
+      } else {
+        // No walkability hooks — just return the random point
+        return new Phaser.Math.Vector2(rx, ry)
       }
+    }
 
-      const para = makePara((this.plane as any).x, (this.plane as any).y)
-      this.enemyParachuters.set(enemy, para)
-
-      const fallMs = Phaser.Math.Between(5000, 10000)
-      this.tweens.add({
-        targets: para,
-        x: wx,
-        y: wy,
-        duration: fallMs,
-        ease: "Sine.Out",
-        onComplete: () => {
-          enemy.landAt(wx, wy) // <- turns on visibility, UI, physics and sets landed=true
-          para.destroy()
-          this.enemyParachuters.delete(enemy)
-        },
-      })
-    })
+    // Fallback: center of map
+    return new Phaser.Math.Vector2(W * 0.5, H * 0.5)
   }
 }
