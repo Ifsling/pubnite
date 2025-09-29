@@ -1,5 +1,5 @@
 // src/components/weapons/Grenade.ts
-import Phaser from "phaser"
+import * as Phaser from "phaser"
 import type GameScene from "../scenes/GameScene"
 import type Enemy from "./Enemy"
 import type Player from "./Player"
