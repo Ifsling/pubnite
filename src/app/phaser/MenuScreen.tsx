@@ -37,6 +37,15 @@ export default function MenuScreen({ onStartGame }: MenuScreenProps) {
       {/* Left side gradient */}
       <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent z-10"></div>
 
+      {/* Logo at top-left */}
+      <div className="absolute top-20 left-20 z-30">
+        <img
+          src="/images/logo-2.png"
+          alt="Pubnite Logo"
+          className="w-128 h-auto"
+        />
+      </div>
+
       {/* Menu content */}
       <div className="relative z-20 w-full max-w-md pl-12 md:pl-24">
         <div className="space-y-4">
