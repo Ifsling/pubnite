@@ -435,11 +435,14 @@ export default class GameScene extends Phaser.Scene {
   }
 
   private handlePlayerJump(rawX: number, rawY: number) {
-    if (!this.inDropPhase) return
+    // Prevent multiple jumps
+    if (!this.inDropPhase || this.dropTarget) return
 
-    // Optional clamp to walkable tile center if your helpers exist
+    this.inDropPhase = true // still in drop phase until finished
     let tx = rawX,
       ty = rawY
+
+    // Optional clamp to walkable tile center if helpers exist
     const isWalkable = (this as any).isWalkableTile as
       | ((tx: number, ty: number) => boolean)
       | undefined
@@ -449,6 +452,7 @@ export default class GameScene extends Phaser.Scene {
     const tileToWorld = (this as any).tileToWorld as
       | ((tx: number, ty: number) => { x: number; y: number })
       | undefined
+
     if (isWalkable && worldToTile && tileToWorld) {
       const g = worldToTile(rawX, rawY)
       if (isWalkable(g.x, g.y)) {
@@ -460,15 +464,15 @@ export default class GameScene extends Phaser.Scene {
 
     this.dropTarget = new Phaser.Math.Vector2(tx, ty)
 
-    // Visual target marker (optional)
+    // Visual target marker
     this.dropMarker?.destroy()
     this.dropMarker = this.add
       .sprite(tx, ty, "drop_x")
       .setOrigin(0.5)
-      .setScale(0.5) // tweak as needed
+      .setScale(0.5)
       .setDepth(9999)
 
-    // Create a simple parachuter container at plane position
+    // Create parachuter from plane’s current position
     const canopy = this.add.ellipse(0, -28, 36, 22, 0xffffff, 0.85)
     const ropeL = this.add.line(0, 0, -10, -18, -2, 0, 0xffffff, 0.8)
     const ropeR = this.add.line(0, 0, 10, -18, 2, 0, 0xffffff, 0.8)
@@ -482,7 +486,6 @@ export default class GameScene extends Phaser.Scene {
       ])
       .setDepth(9000)
 
-    // Smoothly zoom back to gameplay zoom
     const sx = (this.plane as any).x
     const sy = (this.plane as any).y
     const dist = Phaser.Math.Distance.Between(sx, sy, tx, ty)

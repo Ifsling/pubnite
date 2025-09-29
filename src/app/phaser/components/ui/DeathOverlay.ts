@@ -94,6 +94,7 @@ export default class DeathOverlay {
     })
 
     this.updatePosition()
+    this.ensureOverlayOnTop()
     this.scene.scale.on("resize", this.updatePosition, this)
 
     // auto-cleanup when scene shuts down
@@ -110,18 +111,61 @@ export default class DeathOverlay {
       return
     const { width, height } = this.scene.scale
 
-    if (this.overlay.active) {
-      this.overlay.setSize(width, height)
-    }
-    if (this.resultText.active) {
-      this.resultText.setPosition(80, 80)
-    }
-    if (this.playerCountText.active) {
+    if (this.overlay.active) this.overlay.setSize(width, height)
+    if (this.resultText.active) this.resultText.setPosition(80, 80)
+    if (this.playerCountText.active)
       this.playerCountText.setPosition(width - 80, 80)
-    }
-    if (this.lobbyButton.active) {
+    if (this.lobbyButton.active)
       this.lobbyButton.setPosition(width / 2, height - 100)
+
+    this.ensureOverlayOnTop()
+  }
+
+  /** Ensures the death overlay renders above everything else. */
+  private ensureOverlayOnTop() {
+    const cams = this.scene.cameras
+    const w = this.scene.scale.width
+    const h = this.scene.scale.height
+
+    // Tag overlay objects
+    const tag = (go: Phaser.GameObjects.GameObject | null) => {
+      if (go) (go as any).__isDeathUI = true
     }
+    tag(this.overlay)
+    tag(this.resultText)
+    tag(this.playerCountText)
+    tag(this.lobbyButton)
+
+    // Reuse or create a dedicated UI camera
+    let uiCam = cams.getCamera(
+      "DeathUI"
+    ) as Phaser.Cameras.Scene2D.Camera | null
+    if (!uiCam) {
+      uiCam = cams.add(0, 0, w, h, false, "DeathUI")
+    } else {
+      uiCam.setSize(w, h)
+    }
+
+    // UI cam should render only overlay-tagged objects
+    const toIgnoreForUICam = this.scene.children.list.filter(
+      (go) => !(go as any).__isDeathUI
+    )
+    uiCam.ignore(toIgnoreForUICam)
+
+    // All other cameras ignore overlay objects
+    const onlyOverlay = this.scene.children.list.filter(
+      (go) => (go as any).__isDeathUI
+    )
+    // ✅ FIX: Use the cameras array instead of a non-existent getAll()
+    const allCams = (cams as any).cameras as Phaser.Cameras.Scene2D.Camera[]
+    allCams.forEach((cam) => {
+      if (cam !== uiCam) cam.ignore(onlyOverlay)
+    })
+
+    // Make sure UI cam renders last (top)
+    cams.remove(uiCam, false)
+    cams.addExisting(uiCam)
+    uiCam.setScroll(0, 0)
   }
 
   public destroy() {
