@@ -23,6 +23,23 @@ import { AddPhysicsItem, handleCollisions } from "../HelperFunctions"
 import { createMap, spawnableLocations } from "../map/Map"
 import { PreloadAssets } from "../PreloadAssets"
 
+// ====== DROP / FLIGHT TUNABLES ======
+const PLANE_SPEED_PX_PER_SEC = 280 // ✨ slower plane (was ~800 in your code)
+const ENEMY_JUMP_DELAY_MIN_MS = 2500 // ✨ enemies wait at least this long before jumping
+const ENEMY_JUMP_DELAY_MAX_MS = 9000 // ✨ and at most this long (also capped by flight time)
+
+const PARACHUTE_SPEED_PLAYER_PX_PER_SEC = 140 // ✨ slower player descent
+const PARACHUTE_SPEED_ENEMY_PX_PER_SEC = 140 // ✨ slower enemy descent (same as player)
+
+const PLAYER_FALL_MIN_MS = 4000 // optional floor on fall time
+const PLAYER_FALL_MAX_MS = 14000 // optional cap on fall time
+
+const ENEMY_FALL_MIN_MS = 3500 // optional floor on enemy fall time
+const ENEMY_FALL_MAX_MS = 14000 // optional cap on enemy fall time
+
+const AUTO_DROP_EDGE_MARGIN = 50 // clamp auto-drop inside map by this margin
+// =====================================
+
 export default class GameScene extends Phaser.Scene {
   easystar!: EasyStar.js
   mapGrid!: number[][]
@@ -94,18 +111,18 @@ export default class GameScene extends Phaser.Scene {
     this.healthAndGunUI = new GunAndHealthUi(this, this.player)
 
     // ---------- Spreading Enemies (they’ll start hidden/disabled; see Enemy.ts) -------------
-    for (let i = 0; i < NO_OF_ENEMIES; i++) {
-      getOneSpawnLocationWithinMap().then((loc) => {
-        new Enemy(this, loc.x, loc.y, this.player, [
-          trees,
-          water,
-          houses,
-          bush,
-          stones,
-        ])
-        this.playerCountUI.update()
-      })
-    }
+    // for (let i = 0; i < NO_OF_ENEMIES; i++) {
+    //   getOneSpawnLocationWithinMap().then((loc) => {
+    //     new Enemy(this, loc.x, loc.y, this.player, [
+    //       trees,
+    //       water,
+    //       houses,
+    //       bush,
+    //       stones,
+    //     ])
+    //     this.playerCountUI.update()
+    //   })
+    // }
     // -----------------------------------
 
     spawnableLocations().then((locations) => {
@@ -224,13 +241,9 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  private planeDuration(
-    start: Phaser.Math.Vector2,
-    end: Phaser.Math.Vector2,
-    pxPerSec = 800
-  ) {
+  private planeDuration(start: Phaser.Math.Vector2, end: Phaser.Math.Vector2) {
     const dist = Phaser.Math.Distance.BetweenPoints(start, end)
-    return (dist / pxPerSec) * 1000
+    return (dist / PLANE_SPEED_PX_PER_SEC) * 1000
   }
 
   private startDropPhase() {
@@ -292,8 +305,16 @@ export default class GameScene extends Phaser.Scene {
       onComplete: () => {
         if (this.inDropPhase && !this.dropTarget) {
           // Clamp plane’s end inside map
-          let tx = Phaser.Math.Clamp(end.x, 50, this.map.widthInPixels - 50)
-          let ty = Phaser.Math.Clamp(end.y, 50, this.map.heightInPixels - 50)
+          let tx = Phaser.Math.Clamp(
+            end.x,
+            AUTO_DROP_EDGE_MARGIN,
+            this.map.widthInPixels - AUTO_DROP_EDGE_MARGIN
+          )
+          let ty = Phaser.Math.Clamp(
+            end.y,
+            AUTO_DROP_EDGE_MARGIN,
+            this.map.heightInPixels - AUTO_DROP_EDGE_MARGIN
+          )
 
           // Try to adjust to a walkable tile if helpers exist
           const isWalkable = (this as any).isWalkableTile as
@@ -343,7 +364,6 @@ export default class GameScene extends Phaser.Scene {
   ) {
     if (!this.enemies.length) return
 
-    // Simple parachuter factory (same look as before)
     const makePara = (x: number, y: number, scale = 0.6) => {
       const canopy = this.add.ellipse(0, -22, 30, 18, 0xffffff, 0.9)
       const ropeL = this.add.line(0, 0, -8, -14, -2, 0, 0xffffff, 0.85)
@@ -355,27 +375,34 @@ export default class GameScene extends Phaser.Scene {
         .setScale(scale)
     }
 
-    // Stagger enemies across the flight time
-    const minDelay = 500
-    const maxDelay = Math.max(1500, flightMs - 1500)
+    // Stagger within flight time, but also respect your min/max
+    const maxUsableDelay = Math.max(1000, flightMs - 1000)
 
     this.enemies.forEach((enemy) => {
-      // pick a random time during flight to jump
-      const dropAtMs = Phaser.Math.Between(minDelay, maxDelay)
+      const dropAtMs = Phaser.Math.Clamp(
+        Phaser.Math.Between(ENEMY_JUMP_DELAY_MIN_MS, ENEMY_JUMP_DELAY_MAX_MS),
+        500,
+        maxUsableDelay
+      )
 
-      // pick a random landing target anywhere on the map (walkable if hooks exist)
+      // Choose a random valid landing spot anywhere on the map
       const target = this.getRandomGroundPoint()
 
-      // schedule the jump while the plane tween is running
       this.time.delayedCall(dropAtMs, () => {
-        // plane’s current position at jump moment
         const px = (this.plane as any).x
         const py = (this.plane as any).y
 
         const para = makePara(px, py)
         this.enemyParachuters.set(enemy, para)
 
-        const fallMs = Phaser.Math.Between(5000, 10000)
+        // Descent time proportional to distance (farther ⇒ longer)
+        const dist = Phaser.Math.Distance.Between(px, py, target.x, target.y)
+        const fallMs = Phaser.Math.Clamp(
+          (dist / PARACHUTE_SPEED_ENEMY_PX_PER_SEC) * 1000,
+          ENEMY_FALL_MIN_MS,
+          ENEMY_FALL_MAX_MS
+        )
+
         this.tweens.add({
           targets: para,
           x: target.x,
@@ -383,9 +410,20 @@ export default class GameScene extends Phaser.Scene {
           duration: fallMs,
           ease: "Sine.Out",
           onComplete: () => {
+            if (!enemy || !enemy.scene || !enemy.active) {
+              para.destroy()
+              this.enemyParachuters.delete(enemy)
+              return
+            }
+            const body = enemy.body as Phaser.Physics.Arcade.Body | undefined
+            if (!body) {
+              para.destroy()
+              this.enemyParachuters.delete(enemy)
+              return
+            }
+
             enemy.setPosition(target.x, target.y)
             enemy.setVisible(true)
-            const body = enemy.body as Phaser.Physics.Arcade.Body
             body.enable = true
             ;(enemy as any).landed = true
             para.destroy()
@@ -445,15 +483,15 @@ export default class GameScene extends Phaser.Scene {
       .setDepth(9000)
 
     // Smoothly zoom back to gameplay zoom
-    this.tweens.add({
-      targets: this.cameras.main,
-      zoom: 1.0,
-      duration: 1200,
-      ease: "Sine.inOut",
-    })
+    const sx = (this.plane as any).x
+    const sy = (this.plane as any).y
+    const dist = Phaser.Math.Distance.Between(sx, sy, tx, ty)
+    const fallMs = Phaser.Math.Clamp(
+      (dist / PARACHUTE_SPEED_PLAYER_PX_PER_SEC) * 1000,
+      PLAYER_FALL_MIN_MS,
+      PLAYER_FALL_MAX_MS
+    )
 
-    // Random fall 5–10 seconds
-    const fallMs = Phaser.Math.Between(5000, 10000)
     this.tweens.add({
       targets: this.playerParachuter,
       x: tx,

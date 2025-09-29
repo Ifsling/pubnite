@@ -178,25 +178,29 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
   // ---- Pathfinding hooks detection ----
   private get worldToTile() {
-    return (this.scene as any).worldToTile as
-      | ((wx: number, wy: number) => { x: number; y: number })
-      | undefined
+    const s = this.scene as any
+    return s && s.worldToTile
+      ? (s.worldToTile as (wx: number, wy: number) => { x: number; y: number })
+      : undefined
   }
   private get tileToWorld() {
-    return (this.scene as any).tileToWorld as
-      | ((tx: number, ty: number) => { x: number; y: number })
-      | undefined
+    const s = this.scene as any
+    return s && s.tileToWorld
+      ? (s.tileToWorld as (tx: number, ty: number) => { x: number; y: number })
+      : undefined
   }
   private get findPathTiles() {
-    return (this.scene as any).findPathTiles as
-      | ((
+    const s = this.scene as any
+    return s && s.findPathTiles
+      ? (s.findPathTiles as (
           sx: number,
           sy: number,
           ex: number,
           ey: number
         ) => Promise<{ x: number; y: number }[]>)
-      | undefined
+      : undefined
   }
+
   private hasPathfinding() {
     return !!(this.worldToTile && this.tileToWorld && this.findPathTiles)
   }
@@ -380,12 +384,15 @@ export default class Enemy extends Phaser.GameObjects.Container {
   }
 
   public async update(time: number, _delta: number) {
+    if (!(this as any).landed) return // wait until parachute finished
+
     if (this.phase === Phase.Dead) return
 
     // ✨ Don’t run any AI until landed, and (optionally) while player is still in drop phase
     if (!this.landed || (this.scene as any).inDropPhase) return
 
     const body = this.body as Phaser.Physics.Arcade.Body
+    if (!body || !body.enable) return // 👈 guard
 
     // Phase 1: Go to nearest entry
     if (this.phase === Phase.GoingToEntry) {

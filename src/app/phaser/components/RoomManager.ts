@@ -157,6 +157,10 @@ export default class RoomManager {
     this.wallsLayer.setPosition(dx, dy)
     this.doorLayer.setPosition(dx, dy)
 
+    // Recalculate collision bodies after shifting
+    this.wallsLayer.setCollisionByProperty({ collides: true }, true)
+    this.doorLayer.setCollisionBetween(0, 5, true) // true = recalc faces
+
     // (optional but nice) keep player speed/scale for indoors
     this.scene.player.setScale(RoomManager.PLAYER_SCALE)
     this.scene.player.setSpeed(250)

@@ -34,7 +34,7 @@ export default class DeathOverlay {
       )
       .setOrigin(0, 0)
       .setScrollFactor(0)
-      .setDepth(999)
+      .setDepth(99999)
     ;(this.overlay as any).isDeathOverlayElement = true
 
     const message = isWinner
@@ -50,7 +50,7 @@ export default class DeathOverlay {
         fontStyle: "bold",
       })
       .setScrollFactor(0)
-      .setDepth(1000)
+      .setDepth(99999)
     ;(this.resultText as any).isDeathOverlayElement = true
 
     const playerRank = isWinner ? 1 : 1 + enemies.filter((e) => e.active).length
@@ -62,7 +62,7 @@ export default class DeathOverlay {
       })
       .setOrigin(1, 0)
       .setScrollFactor(0)
-      .setDepth(1000)
+      .setDepth(99999)
     ;(this.playerCountText as any).isDeathOverlayElement = true
 
     this.lobbyButton = this.scene.add
@@ -75,7 +75,7 @@ export default class DeathOverlay {
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setInteractive()
-      .setDepth(1000)
+      .setDepth(99999)
     ;(this.lobbyButton as any).isDeathOverlayElement = true
 
     this.lobbyButton.on("pointerover", () => {
