@@ -1,0 +1,117 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "tiled-map.tmj",
+    "expandedProjectPaths": [
+    ],
+    "file.lastUsedOpenFilter": "All Files (*)",
+    "fileStates": {
+        "": {
+            "scaleInDock": 0.5835
+        },
+        "#rooms_tileset": {
+            "scaleInDock": 0.5835
+        },
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_four.tmj": {
+            "scale": 0.7884,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 749.6194824961948,
+                "y": 426.17960426179593
+            }
+        },
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_four.tmj#rooms_tileset": {
+            "scaleInDock": 0.5835
+        },
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_one.tmj": {
+            "scale": 0.7204,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 581.6213214880622,
+                "y": 431.704608550805
+            }
+        },
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_one.tmj#maps_tileset": {
+            "scaleInDock": 1
+        },
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_three.tmj": {
+            "scale": 0.843,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 819.6915776986951,
+                "y": 389.0865954922894
+            }
+        },
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_three.tmj#rooms_tileset": {
+            "scaleInDock": 0.5835
+        },
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_two.tmj": {
+            "scale": 0.6316,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 653.8948701709942,
+                "y": 457.56808106396454
+            }
+        },
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_two.tmj#rooms_tileset": {
+            "scaleInDock": 0.5835
+        },
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/rooms_tileset.tsj": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "tiled-map.tmj": {
+            "scale": 0.09,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 4500,
+                "y": 4422.222222222222
+            }
+        },
+        "tiled-map.tmj#rooms_tileset": {
+            "scaleInDock": 0.27,
+            "scaleInEditor": 1
+        },
+        "tiled-map.tmj#tileset": {
+            "scaleInDock": 0.1127,
+            "scaleInEditor": 0.4
+        },
+        "tileset.tsj": {
+            "scaleInDock": 0.08,
+            "scaleInEditor": 0.32
+        }
+    },
+    "last.exportedFilePath": "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/tiled-files",
+    "last.imagePath": "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items",
+    "map.height": 16,
+    "map.lastUsedExportFilter": "JSON map files (*.tmj *.json)",
+    "map.lastUsedFormat": "json",
+    "map.tileHeight": 50,
+    "map.tileWidth": 50,
+    "map.width": 30,
+    "openFiles": [
+        "tiled-map.tmj",
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_one.tmj",
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_two.tmj",
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_three.tmj",
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_four.tmj"
+    ],
+    "project": "pubnite-map.tiled-project",
+    "recentFiles": [
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_four.tmj",
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_three.tmj",
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_two.tmj",
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/room_one.tmj",
+        "tiled-map.tmj",
+        "/Users/ayus/Documents/z_PROGRAMMING/Website Development/youtube/pubnite/public/map-items/rooms/rooms_tileset.tsj",
+        "tileset.tsj"
+    ],
+    "tileset.embedInMap": true,
+    "tileset.lastUsedFormat": "json",
+    "tileset.tileSize": {
+        "height": 50,
+        "width": 50
+    }
+}

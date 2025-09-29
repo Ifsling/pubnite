@@ -1,3 +1,6 @@
+import Enemy from "./components/Enemy"
+import Player from "./components/Player"
+import { PickupType } from "./Constants"
 import GameScene from "./scenes/GameScene"
 
 export function AddPhysicsItem(
@@ -8,9 +11,14 @@ export function AddPhysicsItem(
   isCollectable: boolean = false,
   isCollidable: boolean = true,
   isImmovable: boolean = true,
-  pickupType: string | null = null
+  pickupType: PickupType | null = null,
+  size: number = 1
 ) {
-  const item = scene.add.sprite(x, y, itemCode).setOrigin(0.5, 0.5)
+  const item = scene.add
+    .sprite(x, y, itemCode)
+    .setOrigin(0.5, 0.5)
+    .setScale(size)
+
   scene.physics.add.existing(item)
   const body = item.body as Phaser.Physics.Arcade.Body
 
@@ -26,15 +34,23 @@ export function AddPhysicsItem(
   } else {
     body.setImmovable(true)
 
-    if (pickupType === "gun") {
-      scene.physics.add.overlap(scene.player, item, () => {
-        scene.player.setOverlappingGun(item) // custom method
-      })
-    } else {
-      scene.physics.add.overlap(scene.player, item, () => {
-        scene.player.tryPickup(item)
-      })
-    }
+    scene.physics.add.overlap(scene.player, item, () => {
+      switch (pickupType) {
+        case "gun":
+          scene.player.setOverlappingGun(item) // custom method
+          break
+        case "faster-boi":
+          item.destroy()
+          scene.player.handleFasterBoi()
+          break
+        case "sliptrap":
+          scene.player.handleSlipTrap()
+          item.destroy()
+          break
+        default:
+          scene.player.tryPickup(item)
+      }
+    })
   }
 
   return item
@@ -105,4 +121,85 @@ export function showTopLeftOverlayText(
   }
 
   return { container, updateMessage }
+}
+
+export function handleCollisions(
+  scene: GameScene,
+  collidableMapItems: {
+    houses: Phaser.Tilemaps.TilemapLayer | null
+    water: Phaser.Tilemaps.TilemapLayer | null
+    trees: Phaser.Tilemaps.TilemapLayer | null
+    bush: Phaser.Tilemaps.TilemapLayer | null
+    stones: Phaser.Tilemaps.TilemapLayer | null
+  }
+) {
+  // Store colliders list
+  scene.outsideColliders = []
+
+  // Player vs map items
+  // Set collision with map items for player
+  scene.outsideColliders.push(
+    ...SetCollisionWithMapItems(scene, collidableMapItems, scene.player)
+  )
+
+  // SetCollisionWithMapItems(scene, collidableMapItems, scene.player)
+
+  // Set collision with map items for enemies
+  scene.enemies.forEach((enemy) => {
+    SetCollisionWithMapItems(scene, collidableMapItems, enemy)
+  })
+
+  // Set collision between player and enemies
+  scene.physics.add.collider(scene.player, scene.enemies)
+
+  // Set collision between enemies
+  scene.enemies.forEach((enemy1, index) => {
+    scene.enemies.slice(index + 1).forEach((enemy2) => {
+      scene.physics.add.collider(enemy1, enemy2)
+    })
+  })
+}
+
+function SetCollisionWithMapItems(
+  scene: GameScene,
+  collidableMapItems: {
+    houses: Phaser.Tilemaps.TilemapLayer | null
+    water: Phaser.Tilemaps.TilemapLayer | null
+    trees: Phaser.Tilemaps.TilemapLayer | null
+    bush: Phaser.Tilemaps.TilemapLayer | null
+    stones: Phaser.Tilemaps.TilemapLayer | null
+  },
+  collisionWith: Player | Enemy
+): Phaser.Physics.Arcade.Collider[] {
+  const colliders: Phaser.Physics.Arcade.Collider[] = []
+
+  if (collidableMapItems.houses) {
+    colliders.push(
+      scene.physics.add.collider(collisionWith, collidableMapItems.houses)
+    )
+  }
+  if (collidableMapItems.water) {
+    colliders.push(
+      scene.physics.add.collider(collisionWith, collidableMapItems.water)
+    )
+  }
+  if (collidableMapItems.trees) {
+    colliders.push(
+      scene.physics.add.collider(collisionWith, collidableMapItems.trees)
+    )
+  }
+  if (collidableMapItems.bush) {
+    colliders.push(
+      scene.physics.add.collider(collisionWith, collidableMapItems.bush)
+    )
+  }
+  if (collidableMapItems.stones) {
+    colliders.push(
+      scene.physics.add.collider(collisionWith, collidableMapItems.stones)
+    )
+  }
+
+  console.log("Colliders set:", colliders)
+
+  return colliders
 }

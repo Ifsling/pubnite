@@ -1,8 +1,25 @@
 import GameScene from "./scenes/GameScene"
 
 export function PreloadAssets(scene: GameScene) {
-  scene.load.image("background", "/images/temp/bg.png")
-  scene.load.image("background2", "/images/temp/bg3.jpg")
+  const tex = scene.textures
+
+  if (!tex.exists("blank")) {
+    scene.textures.generate("blank", {
+      data: ["."],
+      pixelWidth: 1,
+      pixelHeight: 1,
+    })
+  }
+  scene.load.image("tileset", "/map-items/tileset.png")
+  scene.load.image("rooms_tileset", "/map-items/rooms_tileset.png")
+
+  scene.load.tilemapTiledJSON("map", "/map-items/tiled-files/tiled-map.tmj")
+  scene.load.tilemapTiledJSON("room_one", "/map-items/rooms/room_one.tmj")
+  scene.load.tilemapTiledJSON("room_two", "/map-items/rooms/room_two.tmj")
+  scene.load.tilemapTiledJSON("room_three", "/map-items/rooms/room_three.tmj")
+  scene.load.tilemapTiledJSON("room_four", "/map-items/rooms/room_four.tmj")
+
+  scene.load.image("white-circle", "/images/white-circle.png")
   scene.load.image("house", "/images/temp/house.png")
   scene.load.image("stone", "/images/temp/stone.png")
   scene.load.image("player", "/images/player.png")
@@ -22,4 +39,22 @@ export function PreloadAssets(scene: GameScene) {
   scene.load.image("sniper-bullet", "/images/guns/sniper-bullet.png")
   scene.load.image("shotgun-bullet", "/images/guns/shotgun-bullet.png")
   scene.load.image("villian", "/images/villian.png")
+  scene.load.image("ouchwrap", "/images/collectables/ouchwrap.png")
+  scene.load.image("healbox", "/images/collectables/healbox.png")
+  scene.load.image("grave-box", "/images/collectables/grave-box.png")
+  scene.load.image("boomnut", "/images/collectables/boomnut.png")
+  scene.load.image("faster-boi", "/images/collectables/faster-boi.png")
+  scene.load.image("sliptrap", "/images/collectables/sliptrap.png")
+  scene.load.image(
+    "slowmo-injection",
+    "/images/collectables/slowmo-injection.png"
+  )
+  scene.load.image(
+    "boomnut-no-glow",
+    "/images/collectables/without-glow/boomnut.png"
+  )
+  scene.load.image("airplane", "/images/aeroplane.png")
+  scene.load.image("drop_x", "/images/cross.png")
+
+  scene.load.font("BRF", "/fonts/BRF.otf", "opentype")
 }
