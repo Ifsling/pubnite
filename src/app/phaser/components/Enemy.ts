@@ -389,7 +389,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
     if (this.phase === Phase.Dead) return
 
     // ✨ Don’t run any AI until landed, and (optionally) while player is still in drop phase
-    if (!this.landed || (this.scene as any).inDropPhase) return
+    // if (!this.landed || (this.scene as any).inDropPhase) return
 
     const body = this.body as Phaser.Physics.Arcade.Body
     if (!body || !body.enable) return // 👈 guard
