@@ -38,7 +38,7 @@ export default class Player extends Phaser.GameObjects.Container {
     D: Phaser.Input.Keyboard.Key
   }
 
-  private defaultSpeed: number = 1000
+  private defaultSpeed: number = 500
   private speed: number = 500
   private maxHealth: number = 100
   private currentHealth: number = 100

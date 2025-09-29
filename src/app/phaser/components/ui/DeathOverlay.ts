@@ -85,6 +85,9 @@ export default class DeathOverlay {
       this.lobbyButton!.setStyle({ backgroundColor: "#ffffff" })
     })
     this.lobbyButton.on("pointerdown", () => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("PUBNITE_GO_TO_MENU"))
+      }
       this.destroy()
       scene.totalPlayers = 0
       this.scene.scene.restart()
