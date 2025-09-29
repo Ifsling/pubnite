@@ -5,7 +5,7 @@ import Gun, { BulletType } from "./Gun"
 
 const SHOTGUN_BULLET: BulletType = {
   sprite: "shotgun-bullet",
-  damage: 20,
+  damage: 18,
   speed: 700,
 }
 

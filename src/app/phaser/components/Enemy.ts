@@ -111,7 +111,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
     scene.totalPlayers += 1
 
-    this.entryTarget = this.findNearestEntry()
+    // this.entryTarget = this.findNearestEntry()
 
     // ✨ Start hidden & physics disabled; becomes active when parachute lands
     this.setVisible(false)
@@ -618,5 +618,9 @@ export default class Enemy extends Phaser.GameObjects.Container {
     const body = this.body as Phaser.Physics.Arcade.Body
     body.enable = true
     this.landed = true
+
+    // Recalculate entry target NOW based on real landing spot
+    this.entryTarget = this.findNearestEntry()
+    this.phase = Phase.GoingToEntry
   }
 }
