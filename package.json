@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "easystarjs": "^0.4.4",
-    "next": "15.3.5",
+    "next": "15.3.8",
     "phaser": "^3.90.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
